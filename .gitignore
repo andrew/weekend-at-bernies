@@ -1,0 +1,9 @@
+cache/
+out/
+bernies.db
+bernies.db-shm
+bernies.db-wal
+*.log
+.DS_Store
+.ruby-lsp/
+.claude/settings.local.json
