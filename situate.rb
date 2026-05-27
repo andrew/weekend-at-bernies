@@ -64,7 +64,6 @@ def situate(p)
   rdeps, top1   = p["runtime_deps"], p["top1_share"]
   ndep          = p["dependent_packages"]
 
-  return "alternative" if p["deprecation_text"]&.match?(/instead|superseded|use /i)
   return "inlineable"  if loc && loc < INLINEABLE_LOC && (cx.nil? || cx < INLINEABLE_COMPLEXITY) && (rdeps || 0) == 0 && p["has_native"] != 1
   return "few-large"   if top1 && top1 > FEW_LARGE_TOP1 && ndep && ndep < FEW_LARGE_DEPENDENTS
   return "few-large"   if top1 && top1 > 0.9
@@ -85,7 +84,7 @@ now = Time.now.utc.iso8601
 counts = Hash.new(0)
 rows.each do |p|
   sit = situate(p)
-  eol = (p["archived"] == 1 || p["deprecation_text"]) ? 1 : 0
+  eol = p["archived"] == 1 ? 1 : 0
   dtc = dead_deps[p["purl"]]
   upd.execute(sit, eol, dtc, dtc > 0 ? 1 : 0, sit ? "heuristic" : nil, now, p["purl"])
   counts[sit || "null"] += 1

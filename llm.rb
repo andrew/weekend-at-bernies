@@ -69,7 +69,10 @@ def hkey(s) = Digest::SHA256.hexdigest(s)[0, 32]
 def load_size(repo_url)
   return {} unless repo_url
   path = File.join(SIZE, "#{hkey(repo_url)}.json")
-  File.exist?(path) ? (JSON.parse(File.read(path)) rescue {}) : {}
+  return {} unless File.exist?(path)
+  JSON.parse(File.read(path)) || {}
+rescue
+  {}
 end
 
 def load_brief(repo_url)
