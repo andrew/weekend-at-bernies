@@ -10,6 +10,7 @@
 
 require "sqlite3"
 require "csv"
+require "json"
 require "fileutils"
 
 WORKDIR = __dir__
@@ -128,6 +129,27 @@ CSV.open(File.join(OUTDIR, "unpatched.csv"), "w") do |csv|
   unpatched.each { |r| csv << r.values }
 end
 
+remediation = db.execute <<~SQL
+  SELECT p.purl, p.name, p.ecosystem, r.bucket,
+         p.situation, p.eol_direct, p.dead_transitive_count,
+         p.remediation, p.alternative_purl, p.remediation_notes, p.remediation_source,
+         p.llm_confidence, p.dependent_repos, p.top1_dependent,
+         r.code_loc, r.complexity, r.has_native,
+         COALESCE(r.unpatched_advisories_count, 0) AS unpatched_advisories,
+         p.repository_url
+  FROM packages p LEFT JOIN repos r ON r.repository_url = p.repository_url
+  WHERE r.bucket IN ('dead','dormant','unknown')
+  ORDER BY p.dependent_repos DESC NULLS LAST
+SQL
+CSV.open(File.join(OUTDIR, "remediation.csv"), "w") do |csv|
+  csv << %w[purl name ecosystem bucket situation eol_direct dead_transitive_count
+            remediation alternative_purl remediation_notes remediation_source
+            llm_confidence dependent_repos top1_dependent code_loc complexity
+            has_native unpatched_advisories repository_url]
+  remediation.each { |r| csv << r.values }
+end
+File.write(File.join(OUTDIR, "remediation.json"), JSON.pretty_generate(remediation))
+
 dead    = export_bucket(db, "dead",    File.join(OUTDIR, "dead.csv"))
 dormant = export_bucket(db, "dormant", File.join(OUTDIR, "dormant.csv"))
 
@@ -141,6 +163,8 @@ bernies.first(20).each do |r|
          r["active_maintainers_count"] || r["registry_maintainers"], flag
 end
 puts
+tagged = remediation.count { |r| r["remediation"] }
+puts "wrote #{remediation.size} non-active (#{tagged} with remediation) -> out/remediation.{csv,json}"
 puts "wrote #{bernies.size} dead+dormant -> out/bernies.csv"
 puts "wrote #{dead.size} dead -> out/dead.csv, #{dormant.size} dormant -> out/dormant.csv"
 puts "wrote #{unpatched.size} unpatched advisories -> out/unpatched.csv"

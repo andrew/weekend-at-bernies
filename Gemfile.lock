@@ -1,6 +1,7 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    csv (3.3.5)
     faraday (2.14.2)
       faraday-net_http (>= 2.0, < 3.5)
       json
@@ -40,12 +41,14 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  csv
   faraday
   faraday-follow_redirects
   faraday-retry
   sqlite3
 
 CHECKSUMS
+  csv (3.3.5) sha256=6e5134ac3383ef728b7f02725d9872934f523cb40b961479f69cf3afa6c8e73f
   faraday (2.14.2) sha256=73ccb9994a9e8648f010e32eca2ae82e41c57860aa10932cda29418b9e0223ad
   faraday-follow_redirects (0.5.0) sha256=5cde93c894b30943a5d2b93c2fe9284216a6b756f7af406a1e55f211d97d10ad
   faraday-net_http (3.4.3) sha256=9db13becec9312f345a769eeeecf9049c9287d54c0ae053d7235228993a4eec1
