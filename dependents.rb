@@ -28,9 +28,12 @@ FileUtils.mkdir_p(CACHE)
 
 def enc(s) = ERB::Util.url_encode(s.to_s)
 
+NO_DOWNLOADS = %w[proxy.golang.org repo1.maven.org swiftpackageindex.com]
+
 def fetch_dependents(registry, name)
+  sort = NO_DOWNLOADS.include?(registry) ? "dependent_repos_count" : "downloads"
   path = "/api/v1/registries/#{registry}/packages/#{enc(name)}/dependent_packages"
-  cached_get(CONN, path, { per_page: TOP_N, sort: "downloads" }, CACHE)
+  cached_get(CONN, path, { per_page: TOP_N, sort: sort }, CACHE)
 end
 
 db = SQLite3::Database.new(DB_PATH)
@@ -63,7 +66,7 @@ pkgs = db.execute(<<~SQL)
   SELECT p.purl, p.registry, p.ecosystem, p.name, p.downloads, p.dependent_repos
   FROM packages p LEFT JOIN repos r ON p.repository_url = r.repository_url
   WHERE p.dependents_synced_at IS NULL #{bucket_filter} #{eco_filter}
-  ORDER BY p.dependent_repos DESC
+  ORDER BY p.dependent_packages ASC NULLS LAST
   #{"LIMIT #{LIMIT}" if LIMIT}
 SQL
 
@@ -89,7 +92,6 @@ hit = miss = 0
 pkgs.each_with_index do |p, i|
   list = fetch_dependents(p["registry"], p["name"])
   if list.nil?
-    upd.execute(nil, nil, nil, nil, now, p["purl"])
     miss += 1
   else
     use_dl = p["downloads"] && p["downloads"] > 0

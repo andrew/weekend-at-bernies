@@ -11,6 +11,7 @@ Operational companion to findings.md. That doc is for sharing; this one is for p
 ## pipeline
 
   * `dependents.rb` is slow at the head: ~2 min/call for packages with millions of dependents because `/dependent_packages?sort=downloads` sorts server-side. Took ~1h for 369 rubygems; full ~3.9k run will be a day. Either accept that (it's cached) or see if there's a cheaper sort.
+  * `/dependent_packages` 500s outright at ~30s on the largest go packages (`golang.org/x/sys` etc.) regardless of per_page or sort. Server-side query times out before LIMIT applies. Script now skips without marking synced so they retry, and processes smallest-first. The handful that never succeed get classified by the LLM without `top1_share`. Server-side fix would be an index or a precomputed top-N.
   * `size.rb` README excerpt: `File.read(f, 4000, encoding: "UTF-8").scrub` triggers a JSON BINARY warning on some repos. Force-encode before generate.
   * First two `cache/size/*.json` entries (gethostname.rs, fflate) lack `readme` (field added mid-run). `rm` and re-run if they matter; they're not rubygems so currently don't.
   * ~~`situate.rb` deprecation regex~~ done: dropped from heuristics, LLM handles `alternative` and README-based `eol_direct`. `deprecation_text` stays as prompt context only.

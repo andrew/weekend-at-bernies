@@ -141,14 +141,23 @@ remediation = db.execute <<~SQL
   WHERE r.bucket IN ('dead','dormant','unknown')
   ORDER BY p.dependent_repos DESC NULLS LAST
 SQL
+REMEDIATION_COLS = %w[purl name ecosystem bucket situation eol_direct dead_transitive_count
+                      remediation alternative_purl remediation_notes remediation_source
+                      llm_confidence dependent_repos top1_dependent code_loc complexity
+                      has_native unpatched_advisories repository_url]
 CSV.open(File.join(OUTDIR, "remediation.csv"), "w") do |csv|
-  csv << %w[purl name ecosystem bucket situation eol_direct dead_transitive_count
-            remediation alternative_purl remediation_notes remediation_source
-            llm_confidence dependent_repos top1_dependent code_loc complexity
-            has_native unpatched_advisories repository_url]
+  csv << REMEDIATION_COLS
   remediation.each { |r| csv << r.values }
 end
 File.write(File.join(OUTDIR, "remediation.json"), JSON.pretty_generate(remediation))
+
+FileUtils.mkdir_p(File.join(OUTDIR, "findings"))
+remediation.group_by { |r| r["ecosystem"] }.each do |eco, rows|
+  CSV.open(File.join(OUTDIR, "findings", "#{eco}.csv"), "w") do |csv|
+    csv << REMEDIATION_COLS
+    rows.each { |r| csv << r.values }
+  end
+end
 
 dead    = export_bucket(db, "dead",    File.join(OUTDIR, "dead.csv"))
 dormant = export_bucket(db, "dormant", File.join(OUTDIR, "dormant.csv"))

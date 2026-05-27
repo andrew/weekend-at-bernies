@@ -26,7 +26,7 @@ ECO     = (i = ARGV.index("--ecosystem")) && ARGV[i + 1]
 BUCKET  = (i = ARGV.index("--bucket")) && ARGV[i + 1]
 
 CLONE_HOSTS = %w[github.com gitlab.com codeberg.org gitea.com sr.ht git.sr.ht]
-NATIVE_LANGS = %w[C C++ Rust Java Objective-C Objective-C++ Go Zig Assembly]
+NATIVE_LANGS = %w[C C++ Objective-C Objective-C++ Assembly Zig]
 DEPRECATION_RE = /deprecat|unmaintained|no longer maintained|use .{1,40} instead|superseded by|abandoned/i
 
 SOURCE_DIRS = {
