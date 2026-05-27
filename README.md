@@ -36,14 +36,33 @@ Some repos won't be indexed by the issues or commits services yet. The lookup tr
 
 `dead` is deliberately a hard claim: it requires evidence that someone knocked and nobody answered. Zero commits is never sufficient on its own; a finished package with no commits in five years whose author would still merge a security fix is dormant, not dead. Thresholds live at the top of `classify.rb` and the `signals` column on each repo records the raw inputs so cutoffs can be argued over with `SELECT` rather than re-collection.
 
+## Remediation
+
+Bucketing tells you whether anyone is home. The remediation layer asks what a dependent should do about it: what shape the package is (small enough to vendor? one big consumer who should adopt? maintained successor exists?) and what the recommended action is. See `remediation.md` for the full taxonomy.
+
+    ruby dependents.rb --ecosystem rubygems   # top-N dependent packages, top1/top5 concentration
+    ruby size.rb       --ecosystem rubygems   # shallow clone, brief + scc, README deprecation grep
+    ruby situate.rb                           # heuristic situation pre-fill from the above
+    ruby llm.rb        --ecosystem rubygems   # claude -p with json-schema fills situation/remediation
+    ruby tag.rb        --ecosystem rubygems   # export out/tag.csv for human review
+    ruby tag.rb --import out/tag.csv          # write reviewed rows back
+    ruby report.rb                            # adds out/remediation.{csv,json}
+
+These follow the same pattern as the bucket pipeline: each script is idempotent, caches under `cache/<step>/`, takes an optional row limit, and skips `bucket='active'` by default. `--ecosystem NAME` restricts to one ecosystem; `--bucket NAME` targets a specific bucket (useful for spot-checking active repos for misclassification). `size.rb` needs `brief` and `scc` on PATH. `llm.rb` shells out to `claude -p` with a JSON schema, model overridable via `BERNIES_MODEL`.
+
+Each row carries `remediation_source` (heuristic / llm / human) so downstream consumers can weight it. `situate.rb` won't overwrite llm or human rows; `llm.rb` won't overwrite human rows. The intended output is developer-facing guidance, so high-blast-radius packages should pass through `tag.rb` review before being published.
+
+    ruby export_ecosystem.rb cargo            # per-ecosystem dead+dormant -> out/cargo-bernies.csv
+
 ## Database
 
 Everything lands in `bernies.db` (sqlite, WAL mode):
 
-  * `packages` — one row per critical package (purl). Registry, dependent counts, downloads, latest release, registry maintainers, dep-drift rollups.
-  * `repos` — one row per repository_url. Repo metadata, commit/issue stats, clone result, advisory rollups, bucket, signals.
+  * `packages` — one row per critical package (purl). Registry, dependent counts, downloads, latest release, registry maintainers, dep-drift rollups, `top1_share`/`top5_share` concentration, `situation`/`remediation`/`alternative_purl`/`remediation_source`.
+  * `repos` — one row per repository_url. Repo metadata, commit/issue stats, clone result, advisory rollups, bucket, signals, `code_loc`/`complexity`/`entry_points`/`has_native` from `size.rb`.
   * `advisories` — one row per (purl, advisory). Severity, CVSS, vulnerable range, first_patched_version, patched flag.
   * `dependencies` — one row per (purl, dep). Requirement, dep's current latest, majors_behind, runtime/dev kind.
+  * `dependents` — one row per (purl, rank). Top-N dependent packages by downloads, with description.
 
 Some queries:
 
@@ -64,6 +83,9 @@ Some queries:
   * `out/dead.csv`, `out/dormant.csv` — per-bucket subsets with the same columns.
   * `out/unpatched.csv` — advisories with no `first_patched_version`, across all buckets.
   * `out/buckets-by-ecosystem.csv` — active/dormant/dead/unknown counts and dead% per ecosystem.
+  * `out/remediation.csv`, `out/remediation.json` — every non-active package with `situation`, `remediation`, `alternative_purl`, `remediation_source`, `llm_confidence`, top dependent, code size and complexity.
+  * `out/tag.csv` — review sheet from `tag.rb`; edit and reimport.
+  * `out/<ecosystem>-bernies.csv` — per-ecosystem dead+dormant export from `export_ecosystem.rb`.
 
 ## First full run (Apr 2026)
 
@@ -99,7 +121,7 @@ Some queries:
 
 Repos appear under every ecosystem they publish to, so the column totals exceed 5874.
 
-See `notes.md` for caveats, signal definitions, and queries worth running once the db is full.
+See `notes.md` for caveats and signal definitions, `remediation.md` for the situation/remediation taxonomy, `findings.md` for the rubygems remediation writeup, and `todo.md` for what's next.
 
 ## Data sources
 
@@ -108,4 +130,5 @@ See `notes.md` for caveats, signal definitions, and queries worth running once t
   * commits.ecosyste.ms — total and past-year commit/committer counts, bot split, dds
   * issues.ecosyste.ms — issue/PR counts, time-to-close, past-year closed/merged, `active_maintainers`
   * advisories.ecosyste.ms — per-package advisories with `first_patched_version`
-  * git — shallow clone for the default-branch HEAD commit date
+  * git — shallow clone for the default-branch HEAD commit date and for `brief`/`scc` codebase metrics
+  * `claude -p` — situation/remediation classification with structured output
