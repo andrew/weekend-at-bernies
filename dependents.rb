@@ -52,14 +52,15 @@ db.execute_batch <<~SQL
   );
   CREATE INDEX IF NOT EXISTS idx_dependents_purl ON dependents(purl);
 SQL
-{ top1_share: "REAL", top5_share: "REAL", top1_dependent: "TEXT", dependents_synced_at: "TEXT" }.each do |c, t|
+{ top1_share: "REAL", top5_share: "REAL", top1_dependent: "TEXT",
+  transit_ratio: "REAL", dependents_synced_at: "TEXT" }.each do |c, t|
   db.execute("ALTER TABLE packages ADD COLUMN #{c} #{t}") rescue SQLite3::SQLException
 end
 
 bucket_filter = ALL ? "" : "AND (r.bucket IS NULL OR r.bucket <> 'active')"
 eco_filter    = ECO ? "AND p.ecosystem = '#{ECO}'" : ""
 pkgs = db.execute(<<~SQL)
-  SELECT p.purl, p.registry, p.ecosystem, p.name
+  SELECT p.purl, p.registry, p.ecosystem, p.name, p.downloads, p.dependent_repos
   FROM packages p LEFT JOIN repos r ON p.repository_url = r.repository_url
   WHERE p.dependents_synced_at IS NULL #{bucket_filter} #{eco_filter}
   ORDER BY p.dependent_repos DESC
@@ -80,7 +81,7 @@ ins = db.prepare <<~SQL
     fetched_at=excluded.fetched_at
 SQL
 upd = db.prepare <<~SQL
-  UPDATE packages SET top1_share=?, top5_share=?, top1_dependent=?, dependents_synced_at=? WHERE purl=?
+  UPDATE packages SET top1_share=?, top5_share=?, top1_dependent=?, transit_ratio=?, dependents_synced_at=? WHERE purl=?
 SQL
 
 now = Time.now.utc.iso8601
@@ -88,14 +89,19 @@ hit = miss = 0
 pkgs.each_with_index do |p, i|
   list = fetch_dependents(p["registry"], p["name"])
   if list.nil?
-    upd.execute(nil, nil, nil, now, p["purl"])
+    upd.execute(nil, nil, nil, nil, now, p["purl"])
     miss += 1
   else
-    list = list.sort_by { |d| -(d["downloads"] || 0) }.first(TOP_N)
-    dls  = list.map { |d| d["downloads"] || 0 }
-    sum  = dls.sum
-    top1 = sum > 0 ? dls[0].to_f / sum : nil
-    top5 = sum > 0 ? dls.first(5).sum.to_f / sum : nil
+    use_dl = p["downloads"] && p["downloads"] > 0
+    metric = use_dl ? "downloads" : "dependent_repos_count"
+    own    = use_dl ? p["downloads"] : p["dependent_repos"]
+    list = list.reject { |d| d["name"] == p["name"] }
+               .sort_by { |d| -(d[metric] || 0) }.first(TOP_N)
+    vals = list.map { |d| d[metric] || 0 }
+    sum  = vals.sum
+    top1 = sum > 0 ? vals[0].to_f / sum : nil
+    top5 = sum > 0 ? vals.first(5).sum.to_f / sum : nil
+    transit = (own && own > 0) ? (sum.to_f / own).round(3) : nil
     list.each_with_index do |d, rank|
       ins.execute(
         p["purl"], rank + 1, d["purl"], d["ecosystem"], d["name"],
@@ -103,7 +109,7 @@ pkgs.each_with_index do |p, i|
         (d["description"] || "")[0, 200], now
       )
     end
-    upd.execute(top1, top5, list.dig(0, "name"), now, p["purl"])
+    upd.execute(top1, top5, list.dig(0, "name"), transit, now, p["purl"])
     hit += 1
   end
   print "\r[#{i + 1}/#{pkgs.size}] hit=#{hit} miss=#{miss}"
