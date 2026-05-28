@@ -9,21 +9,23 @@ Per-ecosystem writeups on critical open-source packages whose repositories are n
 | pypi | 123 | [pypi.md](pypi.md) |
 | cargo | 232 | [rust.md](rust.md) |
 | packagist | 167 | [php.md](php.md) |
+| npm | 1,111 | [npm.md](npm.md) |
+| maven | 175 | java.md (in progress) |
 
 ## what dependents should do, by ecosystem
 
-| | rubygems | go | pypi | cargo | packagist |
-|---|---:|---:|---:|---:|---:|
-| accept | 50% | 41% | 39% | 39% | 31% |
-| switch | 19% | 32% | 28% | 23% | 38% |
-| vendor | 27% | 21% | 20% | 34% | 27% |
-| switch-piecemeal | 1% | 4% | 8% | 1% | 1% |
-| adopt | 2% | 1% | 4% | 3% | 2% |
-| packages with a named successor | 51 | 96 | 27 | 49 | 53 |
-| repos explicitly archived | 8% | 18% | 14% | 10% | 28% |
-| repos under 300 lines of code | 41% | 10% | 4% | 30% | 40% |
+| | rubygems | go | pypi | cargo | packagist | npm |
+|---|---:|---:|---:|---:|---:|---:|
+| accept | 50% | 41% | 39% | 39% | 31% | 39% |
+| switch | 19% | 32% | 28% | 23% | 38% | 17% |
+| vendor | 27% | 21% | 20% | 34% | 27% | 41% |
+| switch-piecemeal | 1% | 4% | 8% | 1% | 1% | 2% |
+| adopt | 2% | 1% | 4% | 3% | 2% | 1% |
+| packages with a named successor | 51 | 96 | 27 | 49 | 53 | 105 |
+| repos explicitly archived | 8% | 18% | 14% | 10% | 28% | 4% |
+| repos under 300 lines of code | 41% | 10% | 4% | 30% | 40% | 40% |
 
-rubygems has the most very small packages and the highest share with no exit beyond pinning and accepting the risk. Go authors archive readily and point at where to go next. PyPI has the smallest unmaintained set of any large registry and the most large multi-purpose libraries needing piecemeal replacement. Cargo has the highest vendor share, reflecting small focused crates plus a community (RustSec, `cargo audit`) that actively names replacements. Packagist has the highest switch share and the lowest accept share: Composer's `abandoned` field gives authors a structured way to name a successor, and several large rebrands (Zend→Laminas, swiftmailer→symfony/mailer, faker→fakerphp) moved clusters of packages at once.
+rubygems has the most very small packages and the highest share with no exit beyond pinning and accepting the risk. Go authors archive readily and point at where to go next. PyPI has the smallest unmaintained set of any large registry and the most large multi-purpose libraries needing piecemeal replacement. Cargo has the highest vendor share, reflecting small focused crates plus a community (RustSec, `cargo audit`) that actively names replacements. Packagist has the highest switch share and the lowest accept share: Composer's `abandoned` field gives authors a structured way to name a successor, and several large rebrands (Zend→Laminas, swiftmailer→symfony/mailer, faker→fakerphp) moved clusters of packages at once. npm has the highest vendor share, the most concentrated usage, and the lowest archive rate, with 23% of its non-active repos owned by just four prolific authors.
 
 ## terms
 

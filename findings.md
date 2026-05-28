@@ -7,3 +7,4 @@ Per-ecosystem writeups have moved to [`findings/`](findings/):
   * [pypi](findings/pypi.md)
   * [cargo](findings/rust.md)
   * [packagist](findings/php.md)
+  * [npm](findings/npm.md)
