@@ -1,6 +1,6 @@
 # non-active go modules: shape and remediation (May 2026)
 
-360 critical Go modules whose repos are not actively maintained, across 342 repos. Go has the highest dead share of any large registry in the dataset: 20.2% of repos vs 10.8% for rubygems and 11.3% for npm. All 360 classified; human review pending. Dependent concentration is partial (131 of 360) pending an upstream API fix.
+360 critical Go modules whose repos are not actively maintained, across 342 repos. Go has the highest dead share of any large registry in the dataset: 20.2% of repos vs 10.8% for rubygems and 11.3% for npm. Dependent-concentration data is available for 131 of the 360; the largest modules are missing.
 
 | bucket | n | meaning |
 |---|---:|---|
@@ -31,7 +31,7 @@ Compared to rubygems, fewer Go modules end up at "pin and accept the risk" (41% 
 | alternative | 26 | 7% | 4% | a maintained drop-in replacement exists |
 | no-alternative | 2 | 1% | 2% | fills a niche nothing else covers |
 
-The broad/few-large split is unreliable here: concentration data is missing for 229 of 360 modules, and without it the classifier defaults toward broad. The rubygems run showed 60% few-large once concentration was measured; Go is likely similar.
+The broad/few-large split is unreliable here: concentration data is missing for 229 of 360 modules, and those default toward broad in its absence. rubygems showed 60% few-large with full data; Go is likely similar.
 
 ## most of them are not tiny
 
@@ -48,7 +48,7 @@ The giants are real code rather than measurement artefacts: `aws/aws-sdk-go`, `d
 
 ## usage concentration (partial)
 
-For the 131 smaller modules with concentration data, 39 (30%) have a single dependent accounting for at least 90% of downstream use and 81 (62%) have one above 50%, broadly matching rubygems. The remaining 229 are missing this data because the upstream API times out on modules with very large dependent sets; those are likely the most concentrated, since `golang.org/x/*` modules and similar are pulled in by a small number of widely-used intermediaries.
+For the 131 smaller modules with concentration data, 39 (30%) have a single dependent accounting for at least 90% of downstream use and 81 (62%) have one above 50%, broadly matching rubygems. The 229 without data are the modules with the largest dependent sets, which are likely the most concentrated since `golang.org/x/*` and similar are pulled in by a small number of widely-used intermediaries.
 
 ## explicit end-of-life
 

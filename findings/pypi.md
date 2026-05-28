@@ -1,6 +1,6 @@
 # non-active pypi packages: shape and remediation (May 2026)
 
-123 critical PyPI packages whose repos are not actively maintained, across 123 repos. PyPI has the lowest non-active share of any large registry: 8.1% dead and 27% non-active overall, against 20.2% / 65% for Go and 10.8% / 49% for rubygems. All 123 classified; human review pending.
+123 critical PyPI packages whose repos are not actively maintained, across 123 repos. PyPI has the lowest non-active share of any large registry: 8.1% dead and 27% non-active overall, against 20.2% / 65% for Go and 10.8% / 49% for rubygems.
 
 | bucket | n | meaning |
 |---|---:|---|

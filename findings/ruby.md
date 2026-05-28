@@ -1,6 +1,6 @@
 # non-active rubygems: shape and remediation (May 2026)
 
-343 critical rubygems packages whose repos are not actively maintained. For each: how big is it, who actually depends on it, has the maintainer pointed at a successor, and what should a dependent do. All 343 classified; human review pending.
+343 critical rubygems packages whose repos are not actively maintained. For each: how big is it, who actually depends on it, has the maintainer pointed at a successor, and what should a dependent do.
 
 | bucket | n | meaning |
 |---|---:|---|
