@@ -8,3 +8,4 @@ Per-ecosystem writeups have moved to [`findings/`](findings/):
   * [cargo](findings/rust.md)
   * [packagist](findings/php.md)
   * [npm](findings/npm.md)
+  * [maven](findings/java.md)

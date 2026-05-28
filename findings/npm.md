@@ -98,6 +98,18 @@ Editorial; maintained alternatives in the same space, often one of several:
 
 Wrong or backwards: `picocolors` → nanocolors (picocolors is the *successor* to nanocolors), `fsevents` → chokidar (chokidar uses fsevents), `braces` → brace-expansion (different things), `clone-deep` → lodash (too broad), `base64-js` → base64-js (self-reference). npm's overlapping micro-utility space makes successor-vs-alternative harder to call than in any other registry; this list needs more correction than the others.
 
+Two community efforts maintain curated versions of this mapping. [e18e](https://e18e.dev) publishes [module-replacements](https://github.com/es-tooling/module-replacements), 759 package→replacement entries split into `native` (functionality now in Node.js or JS itself), `preferred` (a better-maintained package), and `micro-utilities` (just inline it). [replacements.fyi](https://replacements.fyi/) covers similar ground. Cross-referencing against this set:
+
+| | n |
+|---|---:|
+| our non-active npm packages in e18e's list | 169 (15%) |
+| ...with a native JS/Node replacement | 86 |
+| ...with a preferred package alternative | 44 |
+| ...flagged as inline-it micro-utilities | 39 |
+| where we said `accept` but e18e has a replacement | 63 |
+
+The 86 native-replacement packages are the `fs.realpath` pattern at scale: polyfills and shims for APIs that have since shipped in the runtime (`util.parseArgs` for `minimist`, `node:stream` for `through`, `util.styleText` for `colors`). Those should be `switch` with the native API in the notes, and the 63 we marked `accept` should be revisited against e18e's entry. For npm specifically, e18e's curated list is a better source than ours for anything it covers.
+
 ## open questions
 
 Whether the prolific-author packages should be bucketed differently: a sindresorhus utility with no commits since 2023 is unmaintained by the per-repo test but the maintainer is demonstrably reachable. A per-author activity signal (any commit to any repo in the past year) would separate "done, author present" from "done, author gone". And whether the 69% concentration figure holds once dependent data is complete for the largest packages.

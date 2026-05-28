@@ -29,6 +29,10 @@ Operational companion to findings.md. That doc is for sharing; this one is for p
   * Does `eol_direct` correlate with bucket? 55 rubygems are eol_direct; how many are in `active`? That's the misclassification rate.
   * For the 96 packages with `top1_share >= 0.9`, is the dominant dependent itself active? If `docile`'s only real consumer is simplecov and simplecov is dormant too, that changes the story.
 
+## npm: ingest e18e module-replacements
+
+169 of 1,111 non-active npm packages are in `github.com/es-tooling/module-replacements/manifests/*.json` (86 native, 44 preferred, 39 micro-utility). 63 of those we marked `accept`; e18e says there's an exit. Write `e18e.rb` (or fold into `alternatives.rb` phase 2) to load the manifests, set `alternative_purl` (or a note for native replacements), and flip `remediation` to `switch` where e18e has a `native` or `preferred` entry. Treat e18e as `remediation_source='human'` equivalent since it's curated.
+
 ## phase 2 (from remediation.md)
 
   * `alternatives.rb`: fork-graph check first, then category siblings. Would have caught the `sass-embedded-host-ruby` hallucination.
