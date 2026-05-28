@@ -14,6 +14,7 @@ require "fileutils"
 require "digest"
 require "open3"
 require "time"
+require "thread"
 
 WORKDIR = __dir__
 DB_PATH = File.join(WORKDIR, "bernies.db")
@@ -26,6 +27,7 @@ FORCE   = ARGV.include?("--force")
 ECO     = (i = ARGV.index("--ecosystem")) && ARGV[i + 1]
 BUCKET  = (i = ARGV.index("--bucket")) && ARGV[i + 1]
 MODEL   = ENV["BERNIES_MODEL"] || "haiku"
+WORKERS = (ENV["BERNIES_WORKERS"] || 4).to_i
 
 PROMPT_VERSION = 1
 
@@ -198,27 +200,47 @@ upd = db.prepare <<~SQL
   WHERE purl=? AND (remediation_source IS NULL OR remediation_source <> 'human')
 SQL
 
-hit = miss = 0
-rows.each_with_index do |p, i|
-  deps  = dep_stmt.execute(p["purl"]).map { |d| { name: d["dependent_name"], downloads: d["dependent_downloads"], description: d["description"] } }
-  size  = load_size(p["repository_url"])
-  brief = load_brief(p["repository_url"])
-  prompt = build_prompt(p, deps, size, brief)
-  key = hkey("v#{PROMPT_VERSION}|#{p['purl']}")
-  r = ask(prompt, key)
+deps_for = {}
+rows.each do |p|
+  deps_for[p["purl"]] = dep_stmt.execute(p["purl"]).map { |d|
+    { name: d["dependent_name"], downloads: d["dependent_downloads"], description: d["description"] }
+  }
+end
+dep_stmt.close
+
+queue = Queue.new
+rows.each { |p| queue << p }
+done = Queue.new
+
+threads = WORKERS.times.map do
+  Thread.new do
+    while (p = queue.pop(true) rescue nil)
+      size   = load_size(p["repository_url"])
+      brief  = load_brief(p["repository_url"])
+      prompt = build_prompt(p, deps_for[p["purl"]], size, brief)
+      key    = hkey("v#{PROMPT_VERSION}|#{p['purl']}")
+      done << [p["purl"], ask(prompt, key)]
+    end
+  end
+end
+
+hit = miss = processed = 0
+until processed == rows.size
+  purl, r = done.pop
   if r
     upd.execute(
       r["situation"], r["eol_direct"].nil? ? nil : (r["eol_direct"] ? 1 : 0),
       r["remediation"], r["alternative_purl"], r["note"], r["confidence"],
-      p["purl"]
+      purl
     )
     hit += 1
   else
     miss += 1
   end
-  print "\r[#{i + 1}/#{rows.size}] hit=#{hit} miss=#{miss}"
+  processed += 1
+  print "\r[#{processed}/#{rows.size}] hit=#{hit} miss=#{miss}"
 end
-dep_stmt.close
+threads.each(&:join)
 upd.close
 puts
 puts "classified #{hit}, failed #{miss}"

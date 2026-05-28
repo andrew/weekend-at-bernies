@@ -6,3 +6,4 @@ Per-ecosystem writeups have moved to [`findings/`](findings/):
   * [go](findings/go.md)
   * [pypi](findings/pypi.md)
   * [cargo](findings/rust.md)
+  * [packagist](findings/php.md)

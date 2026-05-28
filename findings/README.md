@@ -8,22 +8,22 @@ Per-ecosystem writeups on critical open-source packages whose repositories are n
 | go | 360 | [go.md](go.md) |
 | pypi | 123 | [pypi.md](pypi.md) |
 | cargo | 232 | [rust.md](rust.md) |
-| packagist | 167 | php.md (in progress) |
+| packagist | 167 | [php.md](php.md) |
 
 ## what dependents should do, by ecosystem
 
-| | rubygems | go | pypi | cargo |
-|---|---:|---:|---:|---:|
-| accept | 50% | 41% | 39% | 39% |
-| switch | 19% | 32% | 28% | 23% |
-| vendor | 27% | 21% | 20% | 34% |
-| switch-piecemeal | 1% | 4% | 8% | 1% |
-| adopt | 2% | 1% | 4% | 3% |
-| packages with a named successor | 51 | 96 | 27 | 49 |
-| repos explicitly archived | 8% | 18% | 14% | 10% |
-| repos under 300 lines of code | 41% | 10% | 4% | 30% |
+| | rubygems | go | pypi | cargo | packagist |
+|---|---:|---:|---:|---:|---:|
+| accept | 50% | 41% | 39% | 39% | 31% |
+| switch | 19% | 32% | 28% | 23% | 38% |
+| vendor | 27% | 21% | 20% | 34% | 27% |
+| switch-piecemeal | 1% | 4% | 8% | 1% | 1% |
+| adopt | 2% | 1% | 4% | 3% | 2% |
+| packages with a named successor | 51 | 96 | 27 | 49 | 53 |
+| repos explicitly archived | 8% | 18% | 14% | 10% | 28% |
+| repos under 300 lines of code | 41% | 10% | 4% | 30% | 40% |
 
-rubygems has the most very small packages and the highest share with no exit beyond pinning and accepting the risk. Go authors are the most likely to archive a repo and point at where to go next, so more Go dependents have a named successor to switch to. PyPI has the smallest unmaintained set of any large registry and the most large multi-purpose libraries needing piecemeal replacement. Cargo has the highest vendor share, reflecting small focused crates plus a community (RustSec, `cargo audit`) that actively names replacements.
+rubygems has the most very small packages and the highest share with no exit beyond pinning and accepting the risk. Go authors archive readily and point at where to go next. PyPI has the smallest unmaintained set of any large registry and the most large multi-purpose libraries needing piecemeal replacement. Cargo has the highest vendor share, reflecting small focused crates plus a community (RustSec, `cargo audit`) that actively names replacements. Packagist has the highest switch share and the lowest accept share: Composer's `abandoned` field gives authors a structured way to name a successor, and several large rebrands (Zend→Laminas, swiftmailer→symfony/mailer, faker→fakerphp) moved clusters of packages at once.
 
 ## terms
 
