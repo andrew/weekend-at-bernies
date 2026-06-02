@@ -1,6 +1,6 @@
 purl,name,ecosystem,bucket,situation,eol_direct,dead_transitive_count,remediation,alternative_purl,remediation_notes,remediation_source,llm_confidence,dependent_repos,top1_dependent,code_loc,complexity,has_native,unpatched_advisories,repository_url
-pkg:cpan/parent,parent,cpan,dormant,broad,0,0,,,,heuristic,,2217,,,,,0,https://github.com/corion/parent,pkg:cpan/parent,parent,cpan,dormant,broad,0,0,,,,heuristic,,2217,,,,,0,https://github.com/corion/parent
-pkg:cpan/Moo,Moo,cpan,dead,broad,0,0,,,,heuristic,,1597,,,,,0,https://github.com/moose/moo,pkg:cpan/Moo,Moo,cpan,dead,broad,0,0,,,,heuristic,,1597,,,,,0,https://github.com/moose/moo
-pkg:cpan/DateTime,DateTime,cpan,dormant,broad,0,0,,,,heuristic,,1058,,,,,0,https://github.com/houseabsolute/datetime.pm,pkg:cpan/DateTime,DateTime,cpan,dormant,broad,0,0,,,,heuristic,,1058,,,,,0,https://github.com/houseabsolute/datetime.pm
-pkg:cpan/YAML,YAML,cpan,dead,broad,0,0,,,,heuristic,,732,,,,,0,https://github.com/ingydotnet/yaml-pm,pkg:cpan/YAML,YAML,cpan,dead,broad,0,0,,,,heuristic,,732,,,,,0,https://github.com/ingydotnet/yaml-pm
-pkg:cpan/Readonly,Readonly,cpan,dead,broad,0,0,,,,heuristic,,632,,,,,0,https://github.com/sanko/readonly,pkg:cpan/Readonly,Readonly,cpan,dead,broad,0,0,,,,heuristic,,632,,,,,0,https://github.com/sanko/readonly
+pkg:cpan/parent,parent,cpan,dormant,broad,0,0,,,,heuristic,,2217,,,,,0,https://github.com/corion/parent
+pkg:cpan/Moo,Moo,cpan,dead,broad,0,0,,,,heuristic,,1597,,,,,0,https://github.com/moose/moo
+pkg:cpan/DateTime,DateTime,cpan,dormant,broad,0,0,,,,heuristic,,1058,,,,,0,https://github.com/houseabsolute/datetime.pm
+pkg:cpan/YAML,YAML,cpan,dead,broad,0,0,,,,heuristic,,732,,,,,0,https://github.com/ingydotnet/yaml-pm
+pkg:cpan/Readonly,Readonly,cpan,dead,broad,0,0,,,,heuristic,,632,,,,,0,https://github.com/sanko/readonly

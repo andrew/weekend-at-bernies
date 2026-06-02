@@ -71,13 +71,14 @@ def export_bucket(db, bucket, path)
     GROUP BY r.repository_url
     ORDER BY dependent_repos DESC NULLS LAST
   SQL
+  cols = %w[repository_url ecosystems package_names dependent_repos dependent_packages downloads
+            registry_maintainers stars archived language days_since_release days_since_commit
+            days_since_push past_year_commits past_year_committers active_maintainers_count
+            past_year_prs_merged past_year_issues_closed advisories_count
+            unpatched_advisories_count signals]
   CSV.open(path, "w") do |csv|
-    csv << %w[repository_url ecosystems package_names dependent_repos dependent_packages downloads
-              registry_maintainers stars archived language days_since_release days_since_commit
-              days_since_push past_year_commits past_year_committers active_maintainers_count
-              past_year_prs_merged past_year_issues_closed advisories_count
-              unpatched_advisories_count signals]
-    rows.each { |r| csv << r.values }
+    csv << cols
+    rows.each { |r| csv << r.values_at(*cols) }
   end
   rows
 end
@@ -104,13 +105,14 @@ bernies = db.execute <<~SQL
   GROUP BY r.repository_url
   ORDER BY dependent_repos DESC NULLS LAST
 SQL
+BERNIES_COLS = %w[repository_url bucket ecosystems package_names dependent_repos dependent_packages
+                  downloads stars language days_since_release days_since_commit days_since_push
+                  past_year_commits past_year_committers dds active_maintainers_count
+                  registry_maintainers past_year_issues past_year_prs past_year_issues_closed
+                  past_year_prs_merged advisories unpatched_advisories archived signals]
 CSV.open(File.join(OUTDIR, "bernies.csv"), "w") do |csv|
-  csv << %w[repository_url bucket ecosystems package_names dependent_repos dependent_packages
-            downloads stars language days_since_release days_since_commit days_since_push
-            past_year_commits past_year_committers dds active_maintainers_count
-            registry_maintainers past_year_issues past_year_prs past_year_issues_closed
-            past_year_prs_merged advisories unpatched_advisories archived signals]
-  bernies.each { |r| csv << r.values }
+  csv << BERNIES_COLS
+  bernies.each { |r| csv << r.values_at(*BERNIES_COLS) }
 end
 
 unpatched = db.execute <<~SQL
@@ -123,11 +125,12 @@ unpatched = db.execute <<~SQL
   WHERE a.patched = 0 AND a.withdrawn_at IS NULL
   ORDER BY p.dependent_repos DESC NULLS LAST
 SQL
+UNPATCHED_COLS = %w[repository_url bucket ecosystem package_name identifier severity cvss_score
+                    published_at vulnerable_range dependent_repos downloads days_since_release
+                    days_since_commit]
 CSV.open(File.join(OUTDIR, "unpatched.csv"), "w") do |csv|
-  csv << %w[repository_url bucket ecosystem package_name identifier severity cvss_score
-            published_at vulnerable_range dependent_repos downloads days_since_release
-            days_since_commit]
-  unpatched.each { |r| csv << r.values }
+  csv << UNPATCHED_COLS
+  unpatched.each { |r| csv << r.values_at(*UNPATCHED_COLS) }
 end
 
 remediation = db.execute <<~SQL
@@ -148,9 +151,10 @@ REMEDIATION_COLS = %w[purl name ecosystem bucket situation eol_direct dead_trans
                       has_native unpatched_advisories repository_url]
 CSV.open(File.join(OUTDIR, "remediation.csv"), "w") do |csv|
   csv << REMEDIATION_COLS
-  remediation.each { |r| csv << r.values }
+  remediation.each { |r| csv << r.values_at(*REMEDIATION_COLS) }
 end
-File.write(File.join(OUTDIR, "remediation.json"), JSON.pretty_generate(remediation))
+clean_remediation = remediation.map { |r| REMEDIATION_COLS.zip(r.values_at(*REMEDIATION_COLS)).to_h }
+File.write(File.join(OUTDIR, "remediation.json"), JSON.pretty_generate(clean_remediation))
 
 FINDINGS_DIR = File.join(WORKDIR, "findings")
 ECO_TO_LANG  = { "rubygems" => "ruby", "cargo" => "rust", "packagist" => "php", "maven" => "java" }
@@ -159,7 +163,7 @@ remediation.group_by { |r| r["ecosystem"] }.each do |eco, rows|
   name = ECO_TO_LANG.fetch(eco, eco)
   CSV.open(File.join(FINDINGS_DIR, "#{name}.csv"), "w") do |csv|
     csv << REMEDIATION_COLS
-    rows.each { |r| csv << r.values }
+    rows.each { |r| csv << r.values_at(*REMEDIATION_COLS) }
   end
 end
 

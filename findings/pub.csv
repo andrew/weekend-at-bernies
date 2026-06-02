@@ -1,9 +1,9 @@
 purl,name,ecosystem,bucket,situation,eol_direct,dead_transitive_count,remediation,alternative_purl,remediation_notes,remediation_source,llm_confidence,dependent_repos,top1_dependent,code_loc,complexity,has_native,unpatched_advisories,repository_url
-pkg:pub/charcode,charcode,pub,dormant,,0,0,,,,,,188927,,,,,0,https://github.com/lrhn/charcode,pkg:pub/charcode,charcode,pub,dormant,,0,0,,,,,,188927,,,,,0,https://github.com/lrhn/charcode
-pkg:pub/pedantic,pedantic,pub,dead,broad,1,0,,,,heuristic,,84266,,,,,0,https://github.com/google/pedantic,pkg:pub/pedantic,pedantic,pub,dead,broad,1,0,,,,heuristic,,84266,,,,,0,https://github.com/google/pedantic
-pkg:pub/quiver,quiver,pub,dormant,broad,0,0,,,,heuristic,,67045,,,,,0,https://github.com/google/quiver-dart,pkg:pub/quiver,quiver,pub,dormant,broad,0,0,,,,heuristic,,67045,,,,,0,https://github.com/google/quiver-dart
-pkg:pub/path_provider_macos,path_provider_macos,pub,dead,,1,0,,,,,,50091,,,,,0,https://github.com/flutter/plugins,pkg:pub/path_provider_macos,path_provider_macos,pub,dead,,1,0,,,,,,50091,,,,,0,https://github.com/flutter/plugins
-pkg:pub/nested,nested,pub,unknown,,0,0,,,,,,44581,,,,,0,https://github.com/rrousselgit/nested,pkg:pub/nested,nested,pub,unknown,,0,0,,,,,,44581,,,,,0,https://github.com/rrousselgit/nested
-pkg:pub/shared_preferences_macos,shared_preferences_macos,pub,dead,,1,0,,,,,,29563,,,,,0,https://github.com/flutter/plugins,pkg:pub/shared_preferences_macos,shared_preferences_macos,pub,dead,,1,0,,,,,,29563,,,,,0,https://github.com/flutter/plugins
-pkg:pub/path_provider_ios,path_provider_ios,pub,dead,,1,0,,,,,,29390,,,,,0,https://github.com/flutter/plugins,pkg:pub/path_provider_ios,path_provider_ios,pub,dead,,1,0,,,,,,29390,,,,,0,https://github.com/flutter/plugins
-pkg:pub/built_collection,built_collection,pub,dormant,broad,0,0,,,,heuristic,,23158,,,,,0,https://github.com/google/built_collection.dart,pkg:pub/built_collection,built_collection,pub,dormant,broad,0,0,,,,heuristic,,23158,,,,,0,https://github.com/google/built_collection.dart
+pkg:pub/charcode,charcode,pub,dormant,,0,0,,,,,,188927,,,,,0,https://github.com/lrhn/charcode
+pkg:pub/pedantic,pedantic,pub,dead,broad,1,0,,,,heuristic,,84266,,,,,0,https://github.com/google/pedantic
+pkg:pub/quiver,quiver,pub,dormant,broad,0,0,,,,heuristic,,67045,,,,,0,https://github.com/google/quiver-dart
+pkg:pub/path_provider_macos,path_provider_macos,pub,dead,,1,0,,,,,,50091,,,,,0,https://github.com/flutter/plugins
+pkg:pub/nested,nested,pub,unknown,,0,0,,,,,,44581,,,,,0,https://github.com/rrousselgit/nested
+pkg:pub/shared_preferences_macos,shared_preferences_macos,pub,dead,,1,0,,,,,,29563,,,,,0,https://github.com/flutter/plugins
+pkg:pub/path_provider_ios,path_provider_ios,pub,dead,,1,0,,,,,,29390,,,,,0,https://github.com/flutter/plugins
+pkg:pub/built_collection,built_collection,pub,dormant,broad,0,0,,,,heuristic,,23158,,,,,0,https://github.com/google/built_collection.dart
