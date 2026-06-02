@@ -41,3 +41,35 @@ Almost no new packages reach the critical set. The list ages in place.
 - First released in the last 2 years (2024+): 48 / 8489 (0.6%)
 
 A package typically needs years of accumulating downloads and dependents before it qualifies, so this set lags real-world adoption by roughly 5 to 10 years.
+
+## Non-active only
+
+Same chart restricted to repos bucketed dormant, dead, or unknown (3010 repos total, excluding the 2864 active).
+
+```
+year   repos                                                      packages
+2003                                                               1
+2005                                                              ## 23
+2006                                                              # 17
+2007                                                              #### 42
+2008   ### 29                                                     #### 38
+2009   ###### 62                                                  ############ 117
+2010   ########### 111                                            ########### 105
+2011   ##################### 205                                  #################### 197
+2012   ######################## 227                               ######################### 244
+2013   ##################################### 349                  ############################ 268
+2014   ############################################ 422           ######################################## 376
+2015   ################################################## 470     ########################################### 412
+2016   ############################### 299                        ################################ 305
+2017   ####################### 223                                ##################### 204
+2018   ################# 161                                      #################################### 341
+2019   ############## 132                                         ##################### 203
+2020   ######## 81                                                ########## 100
+2021   ##### 52                                                   ######## 82
+2022   ### 32                                                     ############# 130
+2023   ### 30                                                     ### 35
+2024   # 13                                                       # 11
+2025    2
+```
+
+Same 2015 peak, same 2018 and 2022 package-only bumps. The active vs non-active split is not age-stratified: old packages are not disproportionately dead, decay happens at every vintage.
