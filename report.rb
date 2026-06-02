@@ -5,6 +5,7 @@
 #   out/buckets-by-ecosystem.csv   active/dormant/dead/unknown counts per ecosystem
 #   out/dead.csv                   dead repos ranked by max dependent_repos
 #   out/dormant.csv                dormant repos ranked by max dependent_repos
+#   findings/<lang>.csv            per-ecosystem remediation data alongside writeups
 #
 # Usage: ruby report.rb
 
@@ -151,9 +152,12 @@ CSV.open(File.join(OUTDIR, "remediation.csv"), "w") do |csv|
 end
 File.write(File.join(OUTDIR, "remediation.json"), JSON.pretty_generate(remediation))
 
-FileUtils.mkdir_p(File.join(OUTDIR, "findings"))
+FINDINGS_DIR = File.join(WORKDIR, "findings")
+ECO_TO_LANG  = { "rubygems" => "ruby", "cargo" => "rust", "packagist" => "php", "maven" => "java" }
+FileUtils.mkdir_p(FINDINGS_DIR)
 remediation.group_by { |r| r["ecosystem"] }.each do |eco, rows|
-  CSV.open(File.join(OUTDIR, "findings", "#{eco}.csv"), "w") do |csv|
+  name = ECO_TO_LANG.fetch(eco, eco)
+  CSV.open(File.join(FINDINGS_DIR, "#{name}.csv"), "w") do |csv|
     csv << REMEDIATION_COLS
     rows.each { |r| csv << r.values }
   end

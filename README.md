@@ -84,7 +84,7 @@ Some queries:
   * `out/unpatched.csv` — advisories with no `first_patched_version`, across all buckets.
   * `out/buckets-by-ecosystem.csv` — active/dormant/dead/unknown counts and dead% per ecosystem.
   * `out/remediation.csv`, `out/remediation.json` — every non-active package with `situation`, `remediation`, `alternative_purl`, `remediation_source`, `llm_confidence`, top dependent, code size and complexity.
-  * `out/findings/<ecosystem>.csv` — same columns as `remediation.csv`, one file per ecosystem for spreadsheet use.
+  * `findings/<lang>.csv` — same columns as `remediation.csv`, one file per ecosystem alongside the writeup (e.g. `findings/ruby.csv` for rubygems).
   * `out/tag.csv` — review sheet from `tag.rb`; edit and reimport.
   * `out/<ecosystem>-bernies.csv` — per-ecosystem dead+dormant export from `export_ecosystem.rb`.
 
