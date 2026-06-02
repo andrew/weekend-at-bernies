@@ -1,0 +1,43 @@
+# Creation timeline
+
+Repos by `repo_created_at` year, packages by `first_release_at` year. Pre-2003 rows excluded (mostly placeholder/epoch dates).
+
+```
+year   repos                                                      packages
+2003                                                               2
+2005                                                              ### 58
+2006                                                              ### 69
+2007                                                              ##### 99
+2008   ### 71                                                     ####### 126
+2009   ######### 167                                              ################## 332
+2010   ############## 261                                         ############## 264
+2011   ######################## 429                               ########################## 462
+2012   ######################### 445                              ############################## 533
+2013   ################################## 619                     ################################# 591
+2014   ########################################## 750             ############################################# 810
+2015   ############################################# 812          ################################################## 888
+2016   ################################ 581                       ############################################ 792
+2017   ######################### 458                              ##################################### 667
+2018   ################## 325                                     ############################################# 810
+2019   ################ 293                                       ################################## 617
+2020   ########### 212                                            #################### 369
+2021   ####### 132                                                ############### 272
+2022   #### 85                                                    ########################## 475
+2023   ### 59                                                     ########## 195
+2024   # 21                                                       # 21
+2025    10                                                        # 21
+2026                                                               6
+```
+
+Both curves peak in 2015. Packages have a second wave in 2018 (810, matching 2014) and a 2022 bump (475) that repos do not share, suggesting a batch of packages first published from repos that already existed.
+
+## Inflow has effectively stopped
+
+Almost no new packages reach the critical set. The list ages in place.
+
+- Median first-release year: 2016 (10 years ago)
+- Mean age: 10.5 years
+- First released in the last 5 years (2021+): 990 / 8489 (11.7%)
+- First released in the last 2 years (2024+): 48 / 8489 (0.6%)
+
+A package typically needs years of accumulating downloads and dependents before it qualifies, so this set lags real-world adoption by roughly 5 to 10 years.
