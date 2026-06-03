@@ -89,6 +89,37 @@ The interesting middle category is "committing quietly" (43 orgs, 116 bernies): 
 
 The wound-down list overlaps almost exactly with the migration-cluster section below. javaee (11 bernies), zendframework (6), css-modules (4), gorilla (4), opentracing (3), turbolinks, visionmedia (tj's old org), celluloid are all here. For these the action a dependent should take is to follow the named successor rather than try to revive the original.
 
+## what the owner data implies for remediation
+
+The remediation taxonomy in [`../findings/README.md`](../findings/README.md) names five actions a dependent can take on a non-active package: accept, vendor, switch, switch-piecemeal, adopt. Which one fits depends partly on the package's shape (size, usage concentration, named successor) and partly on the owner's state. The owner side is what this analysis adds.
+
+| owner state | what it implies for remediation |
+|---|---|
+| migrated or dead org with named successor (javaee, zendframework, sensiolabs, rust-num) | switch is forced and unambiguous; the successor is published. Outreach to the old org is unnecessary. |
+| active distributed org with bernie sub-packages (google, hashicorp, googleapis, symfony, dotnet) | accept is defensible: the org can ship a security fix even if release cadence has slowed. Outreach has a known landing path. |
+| single-person umbrella, owner currently engaged (inspect-js, es-shims, fog, sphinx-doc, hspec, jonschlinkert, sindresorhus, ljharb) | adopt is mechanically real because one person controls everything; the same fact concentrates supply-chain risk on that person. Sponsor-based pressure is available when a funding link exists. |
+| wound-down org or gone individual with no named successor (dominictarr, sstephenson, opentracing-without-otel-named, gorilla pre-revival) | vendor for small packages, accept for larger ones; outreach is unlikely to land. |
+| owner also operates an active critical package in the same ecosystem (104 orgs and 25 individuals here) | switch and adopt outreach has the highest chance of getting a reply: the person/org is already curating something other people depend on |
+| funded owner with bernie set and zero active critical packages (jonschlinkert, piotrmurach, micromark, inspect-js/es-shims via Tidelift) | the sponsor relationship is itself a remediation lever: a sponsor can credibly ask for archiving, handoff, or a release cadence |
+
+The supporting numbers behind those rows:
+
+| | organisation | individual |
+|---|---:|---:|
+| bernie owners total | 482 | 610 |
+| also own ≥1 active critical (highest-priority outreach) | 219 (45%) | 98 (16%) |
+| bernies-only, no active critical (vendor/accept territory) | 263 | 512 |
+| more active critical packages than bernies (sindresorhus / dtolnay shape) | 104 | 25 |
+| in the gone bucket on the github activity check | n/a | 19 |
+| classified single-person org or umbrella | 58 | n/a |
+| classified wound-down or migrated org | 155 | n/a |
+
+So out of 1,138 bernie-holding accounts in the dataset, somewhere around 317 are already operating something else live in the same registry (the highest-priority targets for switch / adopt outreach), 155 orgs are clearly migrated or wound down (switch to the named successor, no conversation needed), and the bulk of individual bernie-holders (512 of 610) own nothing else active in the critical set, putting most of those packages into vendor-or-accept territory by default.
+
+The per-ecosystem differences mostly reflect ownership culture rather than ecosystem health: packagist and maven cluster bernies under live vendor orgs (so 45% and 33% of bernie-owners are also active there), while rubygems, hex and julia have lots of one-person-per-package ownership (so the typical bernie-owner has only the bernie). Same fact, different implication for what to do: the packagist owner is more likely to be reachable; the rubygems owner is more likely to need vendor or accept as the answer.
+
+This is a stronger signal than the github-activity check earlier. An individual can be very active on github without being engaged with anything in the critical-package set, but a maintainer of a currently active critical package has skin in the same game the bernies are part of.
+
 ## migrations rather than abandonment
 
 Several apparent clusters of bernies are completed namespace migrations that left the old account behind for compatibility:

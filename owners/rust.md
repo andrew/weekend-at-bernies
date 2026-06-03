@@ -42,3 +42,5 @@ The cargo funding picture is less suggestive than npm's. The top funded accounts
 ## what this means for outreach
 
 The Rust ecosystem has explicit institutional handling for old crates: `rust-num`, `rust-lang-nursery`, and `cargo-deprecate` annotations. Many of the org-level bernies have already been routed through those mechanisms. The leftover work is mostly individual-author one-purpose crates, where vendoring is usually the right answer.
+
+For the remediation taxonomy in [`../findings/README.md`](../findings/README.md), the cargo owner picture supports the high vendor share. Many cargo bernies are small focused crates owned by individuals whose attention has moved to other rust work; copying the code in is a cheap fix when the crate is small and the original author is unlikely to come back for a release. switch is well-served because the Rust community publishes deprecation annotations and RustSec advisories that name successors. The 36 bernie-owners who also currently maintain an active critical cargo crate are the cases where adopt or switch outreach can credibly land, including dtolnay, burntsushi and seanmonstar.
