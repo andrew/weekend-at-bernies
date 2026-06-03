@@ -217,3 +217,7 @@ A separate and smaller pattern is the all-bernies-no-active individual with no f
   * [haskell.md](haskell.md) (hackage)
 
 Smaller ecosystems (hex, swiftpm, conda, nuget, pub, julia, cocoapods) are folded into the summary table above; with under 200 packages each the per-owner picture is thin.
+
+## other analyses
+
+  * [domains.md](domains.md): commit-email domain takeover risk across bernie-holders. One at-risk domain found in the data (`lddubeau.com`, owns saxes and xmlchars on npm); the methodology lessons from getting to that answer are recorded too.
