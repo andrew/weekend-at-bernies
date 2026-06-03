@@ -23,22 +23,22 @@ The failure mode we care about: a security report or a breaking dependency updat
 
 `fetch.rb` defaults to all sixteen upstream registries; pass names to limit (`ruby fetch.rb rubygems.org hex.pm`). Every HTTP response is cached under `cache/<step>/` keyed by URL so re-runs are local-only and the db can be rebuilt after schema changes. Each enrichment script skips rows it has already touched, takes an optional row limit, and is safe to re-run; delete the matching cache dir to force a refetch.
 
-The signals stack as proofs of life. A recent release, a recent default-branch commit, an active issue maintainer, a merged PR — any one of those is enough to mark a repo alive and skip the expensive checks. Run `classify.rb` between steps; `clone.rb` and `deps.rb` skip repos already bucketed `active` (pass `--all` to override). `clone.rb` does a `--depth 1 --bare --filter=blob:none` clone per repo to read the real default-branch HEAD date, since `pushed_at` from the API covers any branch and lags. `deps.rb` measures drift: for each package's latest release it fetches the declared direct dependencies, looks up each dep's current latest, and records `majors_behind`.
+The signals stack as proofs of life: a recent release, a recent default-branch commit, an active issue maintainer or a merged PR is enough to mark a repo alive and skip the expensive checks. Run `classify.rb` between steps; `clone.rb` and `deps.rb` skip repos already bucketed `active` (pass `--all` to override). `clone.rb` does a `--depth 1 --bare --filter=blob:none` clone per repo to read the real default-branch HEAD date, since `pushed_at` from the API covers any branch and lags. `deps.rb` measures drift: for each package's latest release it fetches the declared direct dependencies, looks up each dep's current latest, and records `majors_behind`.
 
 Some repos won't be indexed by the issues or commits services yet. The lookup triggers a background sync, so a re-run a day or two later (after `rm cache/issues cache/commits`) will fill more in. Until then those repos sit in `unknown`.
 
 ## Buckets
 
-  * **active** — regular human commits in the past year, or a release in the last year
-  * **dormant** — little or no development but someone with write access is still around: closing issues, merging PRs, committing occasionally. A fix could plausibly land.
-  * **dead** — archived, or someone filed an issue/PR in the past year and nobody with write access responded, merged, closed, committed or released anything
-  * **unknown** — nobody filed anything and nothing happened; responsiveness is untested. Also covers repos the issues service hasn't indexed.
+  * **active**: regular human commits in the past year, or a release in the last year
+  * **dormant**: little or no development but someone with write access is still around: closing issues, merging PRs, committing occasionally. A fix could plausibly land.
+  * **dead**: archived, or someone filed an issue/PR in the past year and nobody with write access responded, merged, closed, committed or released anything
+  * **unknown**: nobody filed anything and nothing happened; responsiveness is untested. Also covers repos the issues service hasn't indexed.
 
 `dead` is deliberately a hard claim: it requires evidence that someone knocked and nobody answered. Zero commits is never sufficient on its own; a finished package with no commits in five years whose author would still merge a security fix is dormant, not dead. Thresholds live at the top of `classify.rb` and the `signals` column on each repo records the raw inputs so cutoffs can be argued over with `SELECT` rather than re-collection.
 
 ## Remediation
 
-Bucketing tells you whether anyone is home. The remediation layer asks what a dependent should do about it: what shape the package is (small enough to vendor? one big consumer who should adopt? maintained successor exists?) and what the recommended action is. See `remediation.md` for the full taxonomy.
+Bucketing tells you whether anyone is home; remediation asks what a dependent should do about it: what shape the package is (small enough to vendor? one big consumer who should adopt? maintained successor exists?) and what the recommended action is. See `remediation.md` for the full taxonomy.
 
     ruby dependents.rb --ecosystem rubygems   # top-N dependent packages, top1/top5 concentration, transit_ratio
     ruby size.rb       --ecosystem rubygems   # shallow clone, brief + scc, README deprecation grep
@@ -58,11 +58,11 @@ Each row carries `remediation_source` (heuristic / llm / human) so downstream co
 
 Everything lands in `bernies.db` (sqlite, WAL mode):
 
-  * `packages` — one row per critical package (purl). Registry, dependent counts, downloads, latest release, registry maintainers, dep-drift rollups, `top1_share`/`top5_share`/`transit_ratio`, `situation`/`remediation`/`alternative_purl`/`remediation_source`.
-  * `repos` — one row per repository_url. Repo metadata, commit/issue stats, clone result, advisory rollups, bucket, signals, `code_loc`/`complexity`/`entry_points`/`has_native` from `size.rb`.
-  * `advisories` — one row per (purl, advisory). Severity, CVSS, vulnerable range, first_patched_version, patched flag.
-  * `dependencies` — one row per (purl, dep). Requirement, dep's current latest, majors_behind, runtime/dev kind.
-  * `dependents` — one row per (purl, rank). Top-N dependent packages by downloads, with description.
+  * `packages`: one row per critical package (purl). Registry, dependent counts, downloads, latest release, registry maintainers, dep-drift rollups, `top1_share`/`top5_share`/`transit_ratio`, `situation`/`remediation`/`alternative_purl`/`remediation_source`.
+  * `repos`: one row per repository_url. Repo metadata, commit/issue stats, clone result, advisory rollups, bucket, signals, `code_loc`/`complexity`/`entry_points`/`has_native` from `size.rb`.
+  * `advisories`: one row per (purl, advisory). Severity, CVSS, vulnerable range, first_patched_version, patched flag.
+  * `dependencies`: one row per (purl, dep). Requirement, dep's current latest, majors_behind, runtime/dev kind.
+  * `dependents`: one row per (purl, rank). Top-N dependent packages by downloads, with description.
 
 Some queries:
 
@@ -79,14 +79,14 @@ Some queries:
 
 ## Output
 
-  * `out/bernies.csv` — every dead or dormant repo ranked by `dependent_repos`, with all activity signals and advisory counts. An existing advisory means that one has already been hit; the rest are exposed to the same outcome the next time someone goes looking.
-  * `out/dead.csv`, `out/dormant.csv` — per-bucket subsets with the same columns.
-  * `out/unpatched.csv` — advisories with no `first_patched_version`, across all buckets.
-  * `out/buckets-by-ecosystem.csv` — active/dormant/dead/unknown counts and dead% per ecosystem.
-  * `out/remediation.csv`, `out/remediation.json` — every non-active package with `situation`, `remediation`, `alternative_purl`, `remediation_source`, `llm_confidence`, top dependent, code size and complexity.
-  * `findings/<lang>.csv` — same columns as `remediation.csv`, one file per ecosystem alongside the writeup (e.g. `findings/ruby.csv` for rubygems).
-  * `out/tag.csv` — review sheet from `tag.rb`; edit and reimport.
-  * `out/<ecosystem>-bernies.csv` — per-ecosystem dead+dormant export from `export_ecosystem.rb`.
+  * `out/bernies.csv`: every dead or dormant repo ranked by `dependent_repos`, with all activity signals and advisory counts. An existing advisory means that one has already been hit; the rest are exposed to the same outcome the next time someone goes looking.
+  * `out/dead.csv`, `out/dormant.csv`: per-bucket subsets with the same columns.
+  * `out/unpatched.csv`: advisories with no `first_patched_version`, across all buckets.
+  * `out/buckets-by-ecosystem.csv`: active/dormant/dead/unknown counts and dead% per ecosystem.
+  * `out/remediation.csv`, `out/remediation.json`: every non-active package with `situation`, `remediation`, `alternative_purl`, `remediation_source`, `llm_confidence`, top dependent, code size and complexity.
+  * `findings/<lang>.csv`: same columns as `remediation.csv`, one file per ecosystem alongside the writeup (e.g. `findings/ruby.csv` for rubygems).
+  * `out/tag.csv`: review sheet from `tag.rb`; edit and reimport.
+  * `out/<ecosystem>-bernies.csv`: per-ecosystem dead+dormant export from `export_ecosystem.rb`.
 
 ## First full run (Apr 2026)
 
@@ -126,14 +126,11 @@ See `notes.md` for caveats and signal definitions, `remediation.md` for the situ
 
 ## bernie-check skill
 
-[`SKILL.md`](SKILL.md) is a self-contained Claude Code skill for assessing a single repository on demand, separate from the bulk pipeline above. Given a repository URL (or run from inside a git repo with an `origin` remote), it answers four questions:
+[`SKILL.md`](SKILL.md) is a self-contained Claude Code skill for assessing a single repository on demand, separate from the bulk pipeline above. Given a repository URL (or run from inside a git repo with an `origin` remote), it pulls fresh data from the ecosyste.ms `/repositories/lookup` endpoints and applies the same classification logic as `classify.rb`. For repos that classify as dead or dormant it then looks at the owner side: for individuals, maintenance engagement via `issues.ecosyste.ms /authors/<login>` and recent push activity across all their repos; for organisations, bus factor via `/owners/<org>/maintainers` with bot accounts excluded.
 
-  * **is it a bernie?** Same classification logic as `classify.rb`, applied fresh to one repo using the ecosyste.ms `/repositories/lookup` endpoints (no local database needed).
-  * **who owns it, and are they still around?** For individuals: maintenance engagement via `issues.ecosyste.ms /authors/<login>` and recent push activity via `repos.ecosyste.ms /owners/<login>/repositories`. For organisations: bus factor via `/owners/<org>/maintainers`, with bot accounts excluded.
-  * **what does the security posture look like?** OSSF Scorecard fetched live from `api.securityscorecards.dev`, `SECURITY.md` and threat-model file presence from the ecosyste.ms files map, GitHub Private Vulnerability Reporting status via `gh api repos/<owner>/<repo>/private-vulnerability-reporting`, and unpatched advisories from `advisories.ecosyste.ms`.
-  * **what should a dependent do?** Maps the owner state and package shape onto the same `accept / vendor / switch / switch-piecemeal / adopt` taxonomy used in [`findings/`](findings/).
+For security posture it fetches the OSSF Scorecard live from `api.securityscorecards.dev`, checks `SECURITY.md` and threat-model file presence via the ecosyste.ms files map, reads GitHub Private Vulnerability Reporting status via `gh api repos/<owner>/<repo>/private-vulnerability-reporting`, and pulls unpatched advisories from `advisories.ecosyste.ms`. The output is mapped onto the same `accept / vendor / switch / switch-piecemeal / adopt` taxonomy used in [`findings/`](findings/).
 
-Intended for someone reviewing a dependency tree, doing a security audit, or evaluating a library before adopting it. Produces a one-screen report covering all four points.
+Intended for someone reviewing a dependency tree, doing a security audit, or evaluating a library before adopting it. The output is a one-screen report.
 
 Requirements: `bash`, `curl`, `ruby`, and `gh` CLI authenticated to a GitHub account. The ecosyste.ms calls are unauthenticated; only the PVR check uses `gh`.
 
@@ -141,10 +138,10 @@ Install by copying `SKILL.md` into a Claude Code skills directory (typically `.c
 
 ## Data sources
 
-  * packages.ecosyste.ms — critical packages, dependent counts, downloads, latest release, registry maintainers
-  * repos.ecosyste.ms — fresh pushed_at / archived / status
-  * commits.ecosyste.ms — total and past-year commit/committer counts, bot split, dds
-  * issues.ecosyste.ms — issue/PR counts, time-to-close, past-year closed/merged, `active_maintainers`
-  * advisories.ecosyste.ms — per-package advisories with `first_patched_version`
-  * git — shallow clone for the default-branch HEAD commit date and for `brief`/`scc` codebase metrics
-  * `claude -p` — situation/remediation classification with structured output
+  * packages.ecosyste.ms: critical packages, dependent counts, downloads, latest release, registry maintainers
+  * repos.ecosyste.ms: fresh pushed_at / archived / status
+  * commits.ecosyste.ms: total and past-year commit/committer counts, bot split, dds
+  * issues.ecosyste.ms: issue/PR counts, time-to-close, past-year closed/merged, `active_maintainers`
+  * advisories.ecosyste.ms: per-package advisories with `first_patched_version`
+  * git: shallow clone for the default-branch HEAD commit date and for `brief`/`scc` codebase metrics
+  * `claude -p`: situation/remediation classification with structured output
