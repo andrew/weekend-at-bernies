@@ -13,20 +13,23 @@ Both rates are below the dataset average and the absolute count of bernies is sm
 
 ## sphinx-doc is the largest concentration
 
-| organisation | bernies | active | reading |
-|---|---:|---:|---|
-| sphinx-doc | 6 | 1 | the official Sphinx org; the bernies are old contrib extensions |
-| googleapis | 6 | 17 | mostly old python client libs superseded by newer ones |
-| pallets-eco | 5 | 3 | community-maintained Flask extensions, several handed-off |
-| jupyter | 4 | 7 | several legacy notebook subprojects, the live work is elsewhere |
-| pexpect | 2 | 0 | quiet but functional, low churn by design |
-| requests | 2 | 0 | requests-oauthlib and friends, in stewardship mode |
+| organisation | bernies | active | hist maint | active maint | reading |
+|---|---:|---:|---:|---:|---|
+| sphinx-doc | 6 | 1 | 9 | 4 | active small team; top maintainer holds 57% of historical activity |
+| googleapis | 6 | 17 | 236 | 76 | active distributed; the bernies are old client libs superseded by newer ones |
+| pallets-eco | 5 | 3 | 15 | 3 | active small team; community-maintained Flask extensions |
+| jupyter | 4 | 7 | 53 | 13 | active distributed; several legacy notebook subprojects coexist with live work |
+| pexpect | 2 | 0 | 3 | 1 | single-person org (takluyver, 50% share) |
+| requests | 2 | 0 | 9 | 0 | wound down: 9 historical maintainers, none currently active |
+| python-hyper | 3 | 0 | 13 | 0 | wound down: HTTP/2 work effectively superseded |
 
-The repeated pattern is a live parent org holding a few sub-projects that have aged out as the active codebase moved elsewhere: Sphinx's monorepo, googleapis' newer python-* clients, jupyter's split into jupyter-server and friends. None of them reads as abandonment in the way a quiet personal account does.
+The org activity data is gentler than the bernie classification suggests for most pypi orgs. googleapis, jupyter and pallets-eco are all clearly active organisations whose bernies are sub-projects that aged out alongside the org's main work. The two wound-down rows (requests, python-hyper) match their public stories: the requests-oauthlib half of the requests org has not seen new maintenance, and python-hyper's HTTP/2 work has been superseded.
 
 ## individuals here are mostly low-count
 
 41 individuals own pypi bernies and only one (xolox) holds more than two. Many of pypi's most-installed historical packages (requests, flask, jinja, numpy) appear here under org accounts (psf, pallets-eco, pydata, scipy) rather than personal ones, which keeps individual-owner concentration low even where a single author originally wrote the code.
+
+Activity check: of those 41 individuals, 26 are engaged, 6 trickling, 9 quiet, 0 in the gone bucket. pypi is the only major ecosystem in this dataset where every bernie-holding individual still has recorded activity on github.
 
 ## funding is less visible here
 

@@ -47,14 +47,18 @@ sindresorhus is the largest single account in any ecosystem here:
 
 Several other large individual accounts hold many non-active critical packages and zero active ones in the critical set:
 
-| owner | bernies | active in set | funding |
-|---|---:|---:|---|
-| jonschlinkert | 18 | 0 | GitHub Sponsors |
-| xtuc | 16 | 0 | none |
-| blakeembrey | 16 | 0 | GitHub Sponsors |
-| gregberge | 14 | 0 | GitHub Sponsors |
+| owner | bernies | active in set | activity status | funding |
+|---|---:|---:|---|---|
+| jonschlinkert | 18 | 0 | engaged (3 pushes in last 30d) | GitHub Sponsors |
+| xtuc | 16 | 0 | quiet | none |
+| blakeembrey | 16 | 0 | engaged (recent pushes) | GitHub Sponsors |
+| gregberge | 14 | 0 | engaged | GitHub Sponsors |
+| isaacs | 13 | 15 | engaged (7 active_maint, 16 push 30d) | GitHub Sponsors |
+| dominictarr | 6 | 0 | gone (no recorded push) | none |
+| indutny | 6 | 0 | engaged | none |
+| mafintosh | 5 | 5 | engaged | GitHub Sponsors |
 
-Whether these accounts are active on non-critical repos is outside this dataset.
+The activity status comes from a separate check against ecosyste.ms's commit and issues data: it asks whether the person has any recent maintenance activity anywhere on github, not just on their critical packages. Of the npm bernie-holding individuals (168 total) the split runs 110 engaged, 39 trickling, 10 quiet, 9 gone. So the dominant pattern under npm's largest individual accounts is the person has moved their attention to other repos, not that the person has stopped maintaining open source.
 
 ## micromark and the unifiedjs orbit
 
@@ -80,17 +84,19 @@ Across all of inspect-js and es-shims, every non-active package has zero merged 
 
 ## the org category here is mostly small developer collectives
 
-98 organisations own npm packages in the critical set, with the median org owning 2. The 22% non-active rate for orgs is dragged up by a small number of large account-holders that read more like single-author umbrella accounts than corporate stewards:
+98 organisations own npm packages in the critical set, with the median org owning 2. The 22% non-active rate for orgs is dragged up by a small number of large account-holders that read more like single-author umbrella accounts than corporate stewards. The org maintainer-and-push data refines the picture:
 
-| org account | bernies | active |
-|---|---:|---:|
-| inspect-js | 40 | 3 |
-| micromark | 21 | 0 |
-| jshttp | 14 | 8 |
-| es-shims | 14 | 3 |
+| org account | bernies | hist maint | active maint | top maintainer | reading |
+|---|---:|---:|---:|---|---|
+| inspect-js | 40 | 4 | 0 | ljharb (86%) | committing quietly: pushes ongoing, no community engagement |
+| micromark | 21 | 8 | 0 | ChristianMurphy | wound down: no current maintainers |
+| jshttp | 14 | 14 | 7 | blakeembrey | active small team, distributed |
+| es-shims | 14 | 6 | 0 | ljharb (88%) | committing quietly: same shape as inspect-js |
+
+jshttp is the healthy case in this set: 14 historical maintainers, 7 currently active, and the top one accounts for less than half the total. inspect-js and es-shims are the ones that look most like umbrella accounts for a single individual; ljharb is responsible for 86 and 88% of all historical maintainer activity respectively, and no maintainer is currently registered as active. micromark is in the wound-down bucket: nobody is engaged, and recent pushes are minimal.
 
 The actual large-corporate accounts (npm, microsoft, facebook, google) are present in the data but each holds only a handful of critical packages.
 
 ## what this means for outreach
 
-For outreach, the npm bernie set is concentrated enough to be addressable: the top six bernie-holding accounts together hold roughly a quarter of the registry's non-active critical packages. What an outreach effort can realistically ask of those owners (archive, hand off, cut a release, add a co-maintainer) needs more data than the critical-package slice provides; the event-stream incident, where dominictarr handed maintenance to an anonymous contributor who then shipped malware, is the standing reason maintainer handoff on npm carries more weight than the action sounds.
+For outreach, the npm bernie set is concentrated enough to be addressable: the top six bernie-holding accounts together hold roughly a quarter of the registry's non-active critical packages, and most of the relevant individuals are reachable (engaged or trickling on github). The gone-bucket cohort is small: 9 of 168 npm bernie-holding individuals, with dominictarr the only one holding more than a single bernie. For most of the rest the question for outreach is not "is anyone home" but "do you still consider this package worth releasing." The event-stream incident, where dominictarr handed maintenance to an anonymous contributor who then shipped malware, remains the standing reason maintainer handoff on npm carries more weight than the action sounds.

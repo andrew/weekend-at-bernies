@@ -15,7 +15,7 @@ The individual-to-organisation ratio on non-active rates is the highest of any m
 
 The five biggest org owners are `rails`, `ruby`, `dry-rb`, `thoughtbot`, `fog`. The first four hold many currently active critical packages alongside a handful of non-active sub-libraries (`rails/journey`, `thoughtbot/clearance` and the like) that have been superseded internally and left published for backward compatibility.
 
-fog is the exception, and its presence near the top of the list reflects a slow-motion winding down of the fog/* multi-cloud abstraction. The fog umbrella holds 11 non-active and 3 active critical packages. Its provider plugins (fog-aws, fog-google, fog-azure) were once the canonical way for Ruby applications to talk to public clouds; vendor SDKs largely displaced them, and the plugins now go years between releases. The owner account has a GitHub Sponsors link active.
+fog is the exception, and its presence near the top of the list reflects a slow-motion winding down of the fog/* multi-cloud abstraction. The fog umbrella holds 11 non-active and 3 active critical packages. The org activity check shows 36 historical maintainers but only 2 currently active, with the top historical maintainer (plribeiro3000, 114 interactions) no longer engaged; the org is somewhere between a small active team and a winding-down organisation. Its provider plugins (fog-aws, fog-google, fog-azure) were once the canonical way for Ruby applications to talk to public clouds; vendor SDKs largely displaced them. The owner account has a GitHub Sponsors link active.
 
 | organisation | bernies | active | reading |
 |---|---:|---:|---|
@@ -31,7 +31,9 @@ fog is the exception, and its presence near the top of the list reflects a slow-
 
 81 individuals hold rubygems bernies and most hold one or two; only piotrmurach (six non-active packages and a GitHub Sponsors link) crosses a meaningful threshold. The pattern is breadth: many one-person gems with no co-maintainer and no release in over a year.
 
-Ruby's packaging grew during a period (2007 to 2015) when one author per gem was the norm and active retirement (archiving, naming a successor) was uncommon. The current snapshot reflects that older shape; what each of those authors is doing now is outside the critical-package data.
+Activity check against ecosyste.ms's commit and issue data: 55 of these 81 individuals are currently engaged elsewhere on github, 14 trickling, 7 quiet, 5 gone. The 5 actually-gone (sstephenson, kattrali, mojombo, joshbuddy, roidrage) each hold a single bernie. piotrmurach himself classifies as engaged (last push 2026-05-17), so the cluster of six bernies under that account is about attention, not departure.
+
+Ruby's packaging grew during a period (2007 to 2015) when one author per gem was the norm and active retirement (archiving, naming a successor) was uncommon. Most of those authors are still active on github in some form; the gems themselves are the part that went quiet.
 
 ## funding in this ecosystem is rare
 

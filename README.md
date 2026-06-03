@@ -122,7 +122,7 @@ Some queries:
 
 Repos appear under every ecosystem they publish to, so the column totals exceed 5874.
 
-See `notes.md` for caveats and signal definitions, `remediation.md` for the situation/remediation taxonomy, `findings/<ecosystem>.md` for per-ecosystem writeups (rubygems is `findings/ruby.md`), and `todo.md` for what's next.
+See `notes.md` for caveats and signal definitions, `remediation.md` for the situation/remediation taxonomy, [`findings/`](findings/) for per-ecosystem remediation writeups (rubygems is `findings/ruby.md`), [`owners/`](owners/) for the maintainer-and-organisation analysis (who owns the bernies, are they still around, what the funding picture looks like), and `todo.md` for what's next.
 
 ## Data sources
 

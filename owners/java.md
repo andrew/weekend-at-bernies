@@ -13,17 +13,17 @@ Maven is the most org-shaped ecosystem in the dataset: only 9 individuals own cr
 
 ## the bernies are namespace migrations and a few foundation projects
 
-| organisation | bernies | active | reading |
-|---|---:|---:|---|
-| javaee | 15 | 0 | the old Java EE umbrella; everything moved to eclipse-ee4j / jakarta |
-| qos-ch | 8 | 3 | logback / slf4j; sloppy public release cadence, real maintenance happens privately |
-| springfox | 4 | 0 | OpenAPI for Spring, superseded by springdoc |
-| hamcrest | 4 | 0 | the matcher library, finished work |
-| powermock | 3 | 0 | superseded by Mockito's inline mock-maker |
-| google | 3 | 5 | a few archived Google Java tools |
-| spring-cloud | 2 | 18 | live; the bernies are end-of-life sub-projects |
+| organisation | bernies | active | hist maint | active maint | reading |
+|---|---:|---:|---:|---:|---|
+| javaee | 15 | 0 | 33 | 0 | wound down: fully migrated to eclipse-ee4j / jakarta |
+| qos-ch | 8 | 3 | 8 | 0 | see split below |
+| springfox | 4 | 0 | 1 | 0 | wound down: superseded by springdoc |
+| hamcrest | 4 | 0 | 8 | 1 | single-person org around offbyone; finished work |
+| powermock | 3 | 0 | 2 | 0 | wound down: superseded by Mockito's inline mock-maker |
+| google | 3 | 5 | many | many | active distributed |
+| spring-cloud | 2 | 18 | active | active | active distributed; bernies are end-of-life sub-projects |
 
-`javaee` alone holds 15 of the ecosystem's 84 non-active packages. None of these are abandoned in the sense of nobody being home; they're all redirected. Anyone hitting one of these coordinates in 2026 should expect to migrate to the jakarta.* namespace.
+`javaee` alone holds 15 of the ecosystem's 84 non-active packages. The org activity check confirms: 33 historical maintainers and zero active, which matches the public story of the namespace migration to jakarta. Anyone hitting one of these coordinates in 2026 should expect to follow the migration.
 
 ## qos-ch is split inside the org
 
@@ -34,7 +34,7 @@ qos-ch (Quality Open Software, Ceki Gulcu's company) owns logback, slf4j and the
 | logback (3 packages) | 3 | 71 | 1 (logback-core) | active |
 | slf4j (8 packages) | 8 | 427 | 155 | dormant |
 
-Both halves are foundational to Java logging. The slf4j freeze is the more interesting half of the row even though the org overall looks alive.
+The org-level activity data adds context: 8 historical maintainers but 0 currently active by the maintainer engagement check, with all 8 historical interactions attributed to ceki himself. So qos-ch reads as a single-person org where the one person continues to push to logback but slf4j has fallen behind. Both halves are foundational to Java logging.
 
 ## the individual side is small but interesting
 

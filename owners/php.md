@@ -13,26 +13,26 @@ Packagist has the smallest individual/organisation gap on non-active rates in th
 
 ## the bernies cluster around historical migrations
 
-| organisation | bernies | active | reading |
-|---|---:|---:|---|
-| symfony | 11 | 79 | 79 currently active critical packages alongside 11 bernies |
-| zendframework | 6 | 0 | superseded by Laminas; account exists for historical artefacts |
-| php-http | 6 | 2 | HTTPlug-related; most live work moved to symfony/http-client |
-| php-fig | 6 | 0 | the PSR project, finished work; non-active by intent |
-| doctrine | 6 | 14 | 14 currently active critical packages alongside 6 bernies |
-| thephpleague | 5 | 11 | 11 currently active critical packages alongside 5 bernies |
-| sensiolabs | 4 | 0 | absorbed into Symfony |
+| organisation | bernies | active | hist maint | active maint | reading |
+|---|---:|---:|---:|---:|---|
+| symfony | 11 | 79 | 38 | 20 | active distributed |
+| zendframework | 6 | 0 | 15 | 0 | wound down: rebranded to Laminas, account exists for artefacts |
+| php-http | 6 | 2 | 13 | 0 | wound down: HTTPlug-related work moved to symfony/http-client |
+| php-fig | 6 | 0 | 14 | 4 | active small team despite no critical packages currently active; the PSR project, mostly finished work |
+| doctrine | 6 | 14 | active | active | active distributed alongside 6 bernies |
+| thephpleague | 5 | 11 | active | active | active distributed alongside 5 bernies |
+| sensiolabs | 4 | 0 | 7 | 0 | wound down: absorbed into Symfony |
 
-Several of these are completed work rather than abandoned work. php-fig defined the PSR interfaces and is intentionally done; zendframework completed its rebrand to Laminas and the old account is a tombstone; sensiolabs is now part of Symfony. A bernie classification here is technically accurate (no recent activity) but commercially uninteresting (the maintained successor is obvious and named).
+The org activity data confirms what the migration patterns suggest. zendframework has 15 historical maintainers but zero active; sensiolabs has 7 historical and zero active. Both have completed their migrations to a successor and no maintenance happens on the old org accounts any more.
 
 ## the individual side is small
 
-| individual | bernies | active | reading |
-|---|---:|---:|---|
-| sebastianbergmann | 6 | 20 | 20 currently active critical packages (PHPUnit and its surrounds) alongside 6 bernies |
-| seldaek | 2 | 1 | Composer's lead; bernies are old Symfony bridges |
+| individual | bernies | active in set | activity status | reading |
+|---|---:|---:|---|---|
+| sebastianbergmann | 6 | 20 | engaged (6 active_maint, 33 push 30d) | 20 currently active critical packages (PHPUnit and its surrounds) alongside 6 bernies |
+| seldaek | 2 | 1 | engaged (5 push 30d, 15 push 365d) | Composer's lead; bernies are old Symfony bridges |
 
-Beyond those, no individual holds more than two non-active packages. The personal-account-with-many-bernies pattern that dominates npm barely registers in packagist.
+Beyond those, no individual holds more than two non-active packages. The personal-account-with-many-bernies pattern that dominates npm barely registers in packagist. Of packagist's 22 bernie-holding individuals, 18 are engaged, 2 trickling, 2 quiet, 0 gone.
 
 ## funding observations
 

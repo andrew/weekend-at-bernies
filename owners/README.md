@@ -53,6 +53,42 @@ The org side is more top-heavy. Six organisations hold 14 or more bernies each:
 
 The active-in-set column is the read on how the organisation is currently treating its critical packages. google, haskell, jshttp and hashicorp keep a comparable number of critical packages active; inspect-js and es-shims hold many bernies against very few currently active critical packages. The dataset does not say whether these accounts have other activity outside the critical set.
 
+## are the individual owners still here?
+
+For each of the 609 individual github.com owners holding at least one bernie, we asked ecosyste.ms two questions: are they currently maintaining anything (issues/PRs activity in the last few months) and have they pushed to any repo recently. Combining the two:
+
+| class | n | % | meaning |
+|---|---:|---:|---|
+| engaged | 379 | 62.2 | currently maintaining at least one repo, or pushed to any repo in the last 30 days |
+| trickling | 130 | 21.3 | pushed in the last year, but no current issue/PR engagement |
+| quiet | 81 | 13.3 | last push 1 to 3 years ago |
+| gone | 19 | 3.1 | no recorded push, and not currently maintaining anything |
+
+The vast majority of "bernie owners" are still here. The reason the packages went non-active is mostly that the maintainer's attention moved elsewhere, not that the person left. Examples from the top of the list: mitchellh (8 bernies, currently active on the ghostty terminal emulator with 3 active_maintaining repos and 3 pushes in the last 30 days), vincenthz (23 hackage bernies, 10 pushes in the last year), sindresorhus (45 bernies, 26 pushes in the last 30 days). The headline "they've stopped" framing is wrong about all three.
+
+The 19 actually-gone accounts are heavily concentrated in npm (9) and rubygems (5). The two with more than one bernie are dominictarr (6 npm bernies, no pushes recorded since indexing began) and the smaller hex/julia cases. Most names in the gone bucket hold a single bernie each.
+
+## are the orgs still here?
+
+For each of the 481 organisation accounts holding at least one bernie, we asked ecosyste.ms two questions: how many maintainers are currently engaged on the org's repos (excluding bots like renovate-bot, dependabot, modular-magician), and how recent the push activity is across all of the org's repos. The classes are not symmetric with the individual ones: an org with five active maintainers and an org dominated by one person who is also that org's sole committer are operationally different things even if both pass a "yes there is activity" check.
+
+| class | orgs | bernies | criteria |
+|---|---:|---:|---|
+| active distributed | 97 | 269 | 5+ active human maintainers, no single dominator |
+| active small team | 85 | 169 | 1 to 4 active human maintainers, no single dominator |
+| single-person org | 58 | 103 | active maintenance exists but one person handles 60%+ of it |
+| committing quietly | 43 | 116 | pushes in the last 30 days but no active maintainer engagement |
+| trickling | 107 | 153 | pushed within the last year, not in the last 30 days, no active maintainers |
+| wound down | 48 | 64 | historical maintainers exist but no active engagement and no recent pushes |
+| unindexed but pushing | 20 | 33 | not in the maintainers index but pushing actively (typically large corporate orgs ecosyste.ms hasn't fully crawled) |
+| no data | 23 | 23 | ecosyste.ms has neither maintainer record nor recent push activity |
+
+About 42% of bernie-holding orgs (202 of 481) are in some form clearly alive (active distributed + small team + unindexed). They account for 47% of org-held bernies. Another 12% are single-person orgs where the org account is functionally an umbrella for one individual. Most of those names are recognisable: inspect-js and es-shims (Jordan Harband), savonrb, hspec, markdown-it (puzrin), composer (Seldaek), gorilla, fog (geemus, the single human active maintainer).
+
+The interesting middle category is "committing quietly" (43 orgs, 116 bernies): orgs that are getting code pushed but no community engagement. inspect-js and es-shims are the largest of these, despite the active-maintainer count being zero: ljharb continues to push to those repos without merging external PRs or addressing issues. That's a different failure mode from a dormant org. There are commits on main, but no releases are cut, and external contributors can't get changes accepted.
+
+The wound-down list overlaps almost exactly with the migration-cluster section below. javaee (11 bernies), zendframework (6), css-modules (4), gorilla (4), opentracing (3), turbolinks, visionmedia (tj's old org), celluloid are all here. For these the action a dependent should take is to follow the named successor rather than try to revive the original.
+
 ## migrations rather than abandonment
 
 Several apparent clusters of bernies are completed namespace migrations that left the old account behind for compatibility:
@@ -136,7 +172,7 @@ Of the 25 accounts holding 3 or more bernies and publishing funding links, sever
 
 The Tidelift cases are the most direct. Tidelift sells enterprise subscribers paid maintenance and security response for specifically listed packages. Across inspect-js and es-shims, the listed packages show a consistent shape: time-since-last-release ranges from 400 to 900 days, and the merged-PR count for the past year is zero on every one of the non-active packages. Some of those repos do have recent commits on the default branch (deep-equal has six in the past year, last 44 days ago); those commits have not been cut into npm releases, so a subscriber installing the listed package gets the same version they got a year or two ago.
 
-A separate and smaller pattern is the all-bernies-no-active individual with no funding setup at all: vincenthz (23 dead Haskell crypto packages), mitchellh (8 dead pre-HashiCorp Go libraries), dominictarr (6 dead npm packages including the famous event-stream handoff), kr, armon. The critical-set view is just that these accounts hold dead critical packages and don't take sponsorship; what these individuals are doing outside the critical set is not in this dataset.
+A separate and smaller pattern is the all-bernies-no-active individual with no funding setup at all: vincenthz (23 dead Haskell crypto packages), mitchellh (8 dead pre-HashiCorp Go libraries), dominictarr (6 dead npm packages including the famous event-stream handoff), kr, armon. The maintainer activity check above adds important nuance here: of those five, only dominictarr classifies as gone in the activity data. vincenthz is trickling (10 pushes in the last year), mitchellh is engaged (3 active_maintaining repos), kr and armon are quiet (last push roughly a year ago). The packages they own are non-active; most of the people who own them are not.
 
 ## per-ecosystem writeups
 
