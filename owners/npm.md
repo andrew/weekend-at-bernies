@@ -88,10 +88,10 @@ Across all of inspect-js and es-shims, every non-active package has zero merged 
 
 | org account | bernies | hist maint | active maint | top maintainer | reading |
 |---|---:|---:|---:|---|---|
-| inspect-js | 40 | 4 | 0 | ljharb (86%) | committing quietly: pushes ongoing, no community engagement |
+| inspect-js | 40 | 4 | 0 | ljharb (86%) | push-only: pushes ongoing, no community engagement |
 | micromark | 21 | 8 | 0 | ChristianMurphy | wound down: no current maintainers |
 | jshttp | 14 | 14 | 7 | blakeembrey | active small team, distributed |
-| es-shims | 14 | 6 | 0 | ljharb (88%) | committing quietly: same shape as inspect-js |
+| es-shims | 14 | 6 | 0 | ljharb (88%) | push-only: same shape as inspect-js |
 
 jshttp is the healthy case in this set: 14 historical maintainers, 7 currently active, and the top one accounts for less than half the total. inspect-js and es-shims are the ones that look most like umbrella accounts for a single individual; ljharb is responsible for 86 and 88% of all historical maintainer activity respectively, and no maintainer is currently registered as active. micromark is in the wound-down bucket: nobody is engaged, and recent pushes are minimal.
 

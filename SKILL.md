@@ -154,7 +154,7 @@ Classify into one of:
   * **active distributed**: `active_maint >= 5`, top1_share < 0.6
   * **active small team**: `active_maint` 1 to 4, top1_share < 0.6
   * **single-person umbrella**: `active_maint >= 1` AND `top1_share >= 0.6`, OR (`active_maint = 0` AND top1_share high AND any recent push). The org name is a stand-in for one individual.
-  * **committing quietly**: `active_maint = 0` AND recent push activity exists. Someone is pushing without merging community PRs or addressing issues.
+  * **push-only**: `active_maint = 0` AND recent push activity exists. Someone is pushing without merging community PRs or addressing issues.
   * **trickling / wound down**: `active_maint = 0`, no recent pushes. Likely abandoned or migrated.
 
 For wound-down orgs, check if a successor account is named in the readme, description or pinned issue. Common patterns: `zendframework → laminas`, `javaee → eclipse-ee4j`, `sensiolabs → symfony`, `gorilla → gorilla/* under a new org`, `opentracing → opentelemetry`.

@@ -54,14 +54,12 @@ cargo and cocoapods are absent: their dependency data wasn't collected, so no cl
 
 ## what this measurement misses
 
-**Per-ecosystem range semantics.** The bounded/open split above is a string-pattern heuristic. It treats any `^`, `~`, `~>`, `<`, or bare version as bounded and any `>=` or `*` as open, which is right most of the time but misses nuance: rubygems `~> 1.0` allows 1.x but `~> 1.0.0` only allows 1.0.x; cargo's bare `1.0` means `^1.0` not `=1.0`; python `!=` exclusions are open with holes. A proper answer would evaluate each requirement against the dep's latest version using that ecosystem's resolver rules. The inputs are recorded; the evaluation isn't.
+The bounded/open split above is a string-pattern heuristic. It treats any `^`, `~`, `~>`, `<`, or bare version as bounded and any `>=` or `*` as open, which is right most of the time but misses nuance: rubygems `~> 1.0` allows 1.x but `~> 1.0.0` only allows 1.0.x; cargo's bare `1.0` means `^1.0` not `=1.0`; python `!=` exclusions are open with holes. A proper answer would evaluate each requirement against the dep's latest version using that ecosystem's resolver rules. The inputs are recorded; the evaluation isn't.
 
-**Triviality.** A blocked major could be a security fix, a breaking API change, or a version-number bump with no functional difference. We have advisory data per package, so "logjam where the blocked dep has a published advisory in a version the requirement excludes" is computable and would be the high-priority subset. Not yet computed.
+A blocked major could also be a security fix, a breaking API change, or a version-number bump with no functional difference. We have advisory data per package, so "logjam where the blocked dep has a published advisory in a version the requirement excludes" is computable and would be the high-priority subset. Not yet computed.
 
-**Direction of pressure.** A logjam only matters if consumers above it would otherwise get the update. If every consumer also pins the same old major for its own reasons, the bernie isn't the bottleneck. We have the top dependents for each bernie; checking whether *they* declare a compatible range on the same dep would show whether the bernie is the actual constraint.
-
-**cargo and cocoapods.** No dependency data collected for these two registries, so they're excluded rather than zero.
+A logjam only matters if consumers above it would otherwise get the update. If every consumer also pins the same old major for its own reasons, the bernie isn't the bottleneck. We have the top dependents for each bernie; checking whether *they* declare a compatible range on the same dep would show whether the bernie is the actual constraint.
 
 ## the useful subset
 
-The 458 blocking logjams (bounded requirement excluding the dep's current major, consumers above) are the actionable list, and the 352 where the blocked dep is itself active are the priority within that. For each, the remediation is the same as any other bernie (vendor, switch, adopt) but with added urgency: every release the blocked dependency ships widens the gap. The ones where the blocked dep has shipped a security fix since the bernie's last release are the priority within that.
+The 458 blocking logjams (bounded requirement excluding the dep's current major, consumers above) are the actionable list; the 352 where the blocked dep is itself active are the priority subset. For each, the remediation is the same as any other bernie (vendor, switch, adopt) but carries added urgency, because every release the blocked dependency ships widens the gap. The narrowest priority within the priority subset is the cases where the blocked dep has shipped a security fix since the bernie's last release.

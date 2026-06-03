@@ -31,20 +31,20 @@ rubygems has the most very small packages and the highest share with no exit bey
 
 Each package gets a recommended action:
 
-  * **accept** — keep it, pin the version, carry the risk. No good exit exists. A package with zero published security advisories has usually just not been audited; that says nothing about whether problems exist.
-  * **vendor** — copy the source into your own project and drop the dependency. Removes the supply-chain exposure but you now own the code and whatever is wrong with it.
-  * **switch** — move to a named, maintained successor.
-  * **switch-piecemeal** — replace the part you use with two or three smaller packages.
-  * **adopt** — take over maintenance. Usually because you are already the largest consumer.
+  * **accept**: keep it, pin the version, carry the risk. No good exit exists. A package with zero published security advisories has usually just not been audited; that says nothing about whether problems exist.
+  * **vendor**: copy the source into your own project and drop the dependency. Removes the supply-chain exposure but you now own the code and whatever is wrong with it.
+  * **switch**: move to a named, maintained successor.
+  * **switch-piecemeal**: replace the part you use with two or three smaller packages.
+  * **adopt**: take over maintenance. Usually because you are already the largest consumer.
 
 And a description of its shape:
 
-  * **few-large** — a handful of large dependents account for most usage. The fix is a conversation with them.
-  * **broad** — many small dependents, no single one could take it on.
-  * **inlineable** — small enough that copying the code in is mechanically easy.
-  * **alternative** — a maintained drop-in replacement exists.
-  * **kitchen-sink** — large library, most dependents use one corner of it, several replacements needed.
-  * **no-alternative** — fills a niche nothing else covers, often native bindings or protocol code.
+  * **few-large**: a handful of large dependents account for most usage. The fix is a conversation with them.
+  * **broad**: many small dependents, no single one could take it on.
+  * **inlineable**: small enough that copying the code in is mechanically easy.
+  * **alternative**: a maintained drop-in replacement exists.
+  * **kitchen-sink**: large library, most dependents use one corner of it, several replacements needed.
+  * **no-alternative**: fills a niche nothing else covers, often native bindings or protocol code.
 
 A per-package recommendation is general advice. For any specific project the right answer depends on which dependent you are: the dominant consumer of a `few-large` package should adopt it, while everyone else should wait for them to.
 

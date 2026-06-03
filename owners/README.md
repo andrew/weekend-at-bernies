@@ -77,7 +77,7 @@ For each of the 481 organisation accounts holding at least one bernie, we asked 
 | active distributed | 97 | 269 | 5+ active human maintainers, no single dominator |
 | active small team | 85 | 169 | 1 to 4 active human maintainers, no single dominator |
 | single-person org | 58 | 103 | active maintenance exists but one person handles 60%+ of it |
-| committing quietly | 43 | 116 | pushes in the last 30 days but no active maintainer engagement |
+| push-only | 43 | 116 | pushes in the last 30 days but no active maintainer engagement |
 | trickling | 107 | 153 | pushed within the last year, not in the last 30 days, no active maintainers |
 | wound down | 48 | 64 | historical maintainers exist but no active engagement and no recent pushes |
 | unindexed but pushing | 20 | 33 | not in the maintainers index but pushing actively (typically large corporate orgs ecosyste.ms hasn't fully crawled) |
@@ -85,7 +85,7 @@ For each of the 481 organisation accounts holding at least one bernie, we asked 
 
 About 42% of bernie-holding orgs (202 of 481) are in some form clearly alive (active distributed + small team + unindexed). They account for 47% of org-held bernies. Another 12% are single-person orgs where the org account is functionally an umbrella for one individual. Most of those names are recognisable: inspect-js and es-shims (Jordan Harband), savonrb, hspec, markdown-it (puzrin), composer (Seldaek), gorilla, fog (geemus, the single human active maintainer).
 
-The interesting middle category is "committing quietly" (43 orgs, 116 bernies): orgs that are getting code pushed but no community engagement. inspect-js and es-shims are the largest of these, despite the active-maintainer count being zero: ljharb continues to push to those repos without merging external PRs or addressing issues. That's a different failure mode from a dormant org. There are commits on main, but no releases are cut, and external contributors can't get changes accepted.
+The interesting middle category is "push-only" (43 orgs, 116 bernies): orgs that are getting code pushed but no community engagement. inspect-js and es-shims are the largest of these, despite the active-maintainer count being zero: ljharb continues to push to those repos without merging external PRs or addressing issues. That's a different failure mode from a dormant org. There are commits on main, but no releases are cut, and external contributors can't get changes accepted.
 
 The wound-down list overlaps almost exactly with the migration-cluster section below. javaee (11 bernies), zendframework (6), css-modules (4), gorilla (4), opentracing (3), turbolinks, visionmedia (tj's old org), celluloid are all here. For these the action a dependent should take is to follow the named successor rather than try to revive the original.
 
