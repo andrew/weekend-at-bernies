@@ -124,6 +124,21 @@ Repos appear under every ecosystem they publish to, so the column totals exceed 
 
 See `notes.md` for caveats and signal definitions, `remediation.md` for the situation/remediation taxonomy, [`findings/`](findings/) for per-ecosystem remediation writeups (rubygems is `findings/ruby.md`), [`owners/`](owners/) for the maintainer-and-organisation analysis (who owns the bernies, are they still around, what the funding picture looks like), and `todo.md` for what's next.
 
+## bernie-check skill
+
+[`SKILL.md`](SKILL.md) is a self-contained Claude Code skill for assessing a single repository on demand, separate from the bulk pipeline above. Given a repository URL (or run from inside a git repo with an `origin` remote), it answers four questions:
+
+  * **is it a bernie?** Same classification logic as `classify.rb`, applied fresh to one repo using the ecosyste.ms `/repositories/lookup` endpoints (no local database needed).
+  * **who owns it, and are they still around?** For individuals: maintenance engagement via `issues.ecosyste.ms /authors/<login>` and recent push activity via `repos.ecosyste.ms /owners/<login>/repositories`. For organisations: bus factor via `/owners/<org>/maintainers`, with bot accounts excluded.
+  * **what does the security posture look like?** OSSF Scorecard fetched live from `api.securityscorecards.dev`, `SECURITY.md` and threat-model file presence from the ecosyste.ms files map, GitHub Private Vulnerability Reporting status via `gh api repos/<owner>/<repo>/private-vulnerability-reporting`, and unpatched advisories from `advisories.ecosyste.ms`.
+  * **what should a dependent do?** Maps the owner state and package shape onto the same `accept / vendor / switch / switch-piecemeal / adopt` taxonomy used in [`findings/`](findings/).
+
+Intended for someone reviewing a dependency tree, doing a security audit, or evaluating a library before adopting it. Produces a one-screen report covering all four points.
+
+Requirements: `bash`, `curl`, `ruby`, and `gh` CLI authenticated to a GitHub account. The ecosyste.ms calls are unauthenticated; only the PVR check uses `gh`.
+
+Install by copying `SKILL.md` into a Claude Code skills directory (typically `.claude/skills/bernie-check/SKILL.md` for project-local, or `~/.claude/skills/bernie-check/SKILL.md` for global).
+
 ## Data sources
 
   * packages.ecosyste.ms — critical packages, dependent counts, downloads, latest release, registry maintainers
