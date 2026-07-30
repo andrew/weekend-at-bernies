@@ -9,9 +9,10 @@
 require "sqlite3"
 require "fileutils"
 require_relative "http"
+require_relative "database"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
+DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "repos")
 CONN    = conn("https://repos.ecosyste.ms")
 LIMIT   = ARGV[0]&.to_i

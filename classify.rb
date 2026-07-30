@@ -17,9 +17,10 @@
 require "sqlite3"
 require "date"
 require "time"
+require_relative "database"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
+DB_PATH = Bernies.database_path
 
 ACTIVE_COMMITS_PER_YEAR = 12
 STALE_PUSH_DAYS         = 730

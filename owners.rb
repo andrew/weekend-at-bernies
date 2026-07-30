@@ -13,9 +13,10 @@ require "uri"
 require "json"
 require "fileutils"
 require_relative "http"
+require_relative "database"
 
 WORKDIR        = __dir__
-DB_PATH        = File.join(WORKDIR, "bernies.db")
+DB_PATH        = Bernies.database_path
 PACKAGES_CACHE = File.join(WORKDIR, "cache", "packages")
 REPOS_CACHE    = File.join(WORKDIR, "cache", "repos")
 OWNERS_CACHE   = File.join(WORKDIR, "cache", "owners")

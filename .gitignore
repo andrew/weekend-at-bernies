@@ -1,8 +1,10 @@
 cache/
-out/
 bernies.db
 bernies.db-shm
 bernies.db-wal
+science-bernies.db
+science-bernies.db-shm
+science-bernies.db-wal
 *.log
 .DS_Store
 .ruby-lsp/
