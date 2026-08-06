@@ -22,9 +22,10 @@ require "json"
 require "time"
 require "fileutils"
 require_relative "http"
+require_relative "database"
 
 WORKDIR      = __dir__
-DB_PATH      = File.join(WORKDIR, "bernies.db")
+DB_PATH      = Bernies.database_path
 ISSUES_CACHE = File.join(WORKDIR, "cache", "maintainers", "issues")
 REPOS_CACHE  = File.join(WORKDIR, "cache", "maintainers", "repos")
 ISSUES_CONN  = conn("https://issues.ecosyste.ms")

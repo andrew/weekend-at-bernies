@@ -17,9 +17,10 @@ require "digest"
 require "tmpdir"
 require "open3"
 require "time"
+require_relative "database"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
+DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "clone")
 LIMIT   = ARGV.reject { |a| a.start_with?("--") }.first&.to_i
 ALL     = ARGV.include?("--all")

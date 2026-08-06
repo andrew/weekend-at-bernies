@@ -8,6 +8,10 @@ The failure mode we care about: a security report or a breaking dependency updat
 
     bundle install
 
+Run the tests with:
+
+    ruby -Itest test/science_collector_test.rb
+
 ## Pipeline
 
     ruby fetch.rb            # critical packages -> bernies.db (packages + repos tables)
@@ -26,6 +30,22 @@ The failure mode we care about: a security report or a breaking dependency updat
 The signals stack as proofs of life: a recent release, a recent default-branch commit, an active issue maintainer or a merged PR is enough to mark a repo alive and skip the expensive checks. Run `classify.rb` between steps; `clone.rb` and `deps.rb` skip repos already bucketed `active` (pass `--all` to override). `clone.rb` does a `--depth 1 --bare --filter=blob:none` clone per repo to read the real default-branch HEAD date, since `pushed_at` from the API covers any branch and lags. `deps.rb` measures drift: for each package's latest release it fetches the declared direct dependencies, looks up each dep's current latest, and records `majors_behind`.
 
 Some repos won't be indexed by the issues or commits services yet. The lookup triggers a background sync, so a re-run a day or two later (after `rm cache/issues cache/commits`) will fill more in. Until then those repos sit in `unknown`.
+
+## Science projects
+
+`fetch_science.rb` collects the top projects from [science.ecosyste.ms](https://science.ecosyste.ms) into `science-bernies.db`. The order matches the projects page, which ranks projects by science score plus the general project score. The default cohort is 2,000 projects; pass another number to change it.
+
+    ruby fetch_science.rb 2000
+    BERNIES_DB=science-bernies.db ruby repos.rb
+    BERNIES_DB=science-bernies.db ruby commits.rb
+    BERNIES_DB=science-bernies.db ruby issues.rb
+    BERNIES_DB=science-bernies.db ruby advisories.rb
+    BERNIES_DB=science-bernies.db ruby classify.rb
+    ruby report_science.rb
+
+The collector stores the science rank, score, citations, category and owner metadata, along with any packages published from the repository. The normal enrichment scripts then collect the same repository activity, maintainer response and advisory signals used for the package dataset. `report_science.rb` writes `out/science-projects.csv`, `out/science-bernies.csv` and `out/science-buckets.csv`.
+
+The science API does not currently return `science_score` or allow API sorting by it, so cohort selection reads the public projects listing and fetches each selected project from the JSON API. Responses are cached under `cache/science`; remove that directory to collect a new ranking.
 
 ## Buckets
 
