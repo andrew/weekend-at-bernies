@@ -53,6 +53,7 @@ urls.each_with_index do |url, i|
   m = lookup(url)
   if m.nil?
     miss += 1
+    puts "; miss: #{url}"
   else
     upd.execute(
       m["stargazers_count"], m["forks_count"], m["open_issues_count"],
