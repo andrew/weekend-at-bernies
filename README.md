@@ -23,6 +23,9 @@ Run the tests with:
     ruby clone.rb            # shallow-clone non-active repos for true last_commit_at
     ruby deps.rb             # dependency drift (majors behind) for non-active packages
     ruby classify.rb         # re-bucket
+
+    NOTE: Need to run the ruby script under Remediation section to update db schema.
+
     ruby report.rb           # stats + out/*.csv
 
 `fetch.rb` defaults to all sixteen upstream registries; pass names to limit (`ruby fetch.rb rubygems.org hex.pm`). Every HTTP response is cached under `cache/<step>/` keyed by URL so re-runs are local-only and the db can be rebuilt after schema changes. Each enrichment script skips rows it has already touched, takes an optional row limit, and is safe to re-run; delete the matching cache dir to force a refetch.
