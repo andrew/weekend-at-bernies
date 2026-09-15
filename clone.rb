@@ -92,6 +92,7 @@ urls.each_with_index do |url, i|
     hit += 1
   else
     upd.execute(nil, nil, now, url)
+    puts ; puts "miss: #{r}, #{url}"
     miss += 1
   end
   print "\r[#{i + 1}/#{urls.size}] hit=#{hit} miss=#{miss}"

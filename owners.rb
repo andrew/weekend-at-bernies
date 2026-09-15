@@ -153,6 +153,7 @@ todo.each_with_index do |r, i|
     rec = cached_get(CONN, path, {}, OWNERS_CACHE)
     if rec.nil?
       api_miss += 1
+      puts ; puts "miss: #{rec}"
       mark_missing.execute(host, login)
     else
       write_owner(upsert, host, login, rec)
