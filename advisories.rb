@@ -83,7 +83,6 @@ unpatched = 0
 pkgs.each_with_index do |p, i|
   advs = fetch(p["ecosystem"], p["name"])
   advs.each do |a|
-    next if a["withdrawn_at"]
     ident = (a["identifiers"] || []).first || a["uuid"]
     entry = (a["packages"] || []).find { |ap| ap["ecosystem"] == p["ecosystem"] && ap["package_name"].to_s.downcase == p["name"].to_s.downcase }
     versions = entry ? (entry["versions"] || []) : []
@@ -97,6 +96,7 @@ pkgs.each_with_index do |p, i|
       patched_versions.compact.join("; "),
       has_patch ? 1 : 0, a["url"], now
     )
+    next if a["withdrawn_at"]
     total += 1
     unpatched += 1 unless has_patch
   end
@@ -117,7 +117,7 @@ db.execute_batch <<~SQL
     );
 SQL
 
-n = db.get_first_value("SELECT COUNT(*) FROM advisories")
-u = db.get_first_value("SELECT COUNT(*) FROM advisories WHERE patched=0")
+n = db.get_first_value("SELECT COUNT(*) FROM advisories WHERE withdrawn_at IS NULL")
+u = db.get_first_value("SELECT COUNT(*) FROM advisories WHERE patched=0 AND withdrawn_at IS NULL")
 r = db.get_first_value("SELECT COUNT(*) FROM repos WHERE unpatched_advisories_count > 0")
 puts "#{n} advisory rows, #{u} unpatched, #{r} repos with at least one unpatched advisory"

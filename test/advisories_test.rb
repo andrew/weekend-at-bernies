@@ -153,4 +153,38 @@ class AdvisoriesTest < Minitest::Test
     output = run_script("report.rb", db_path: nil)
     assert_includes output, "wrote 0 unpatched advisories"
   end
+
+  def test_refresh_persists_withdrawal_and_removes_advisory_from_counts_and_report
+    data = advisory
+    data["packages"].first["versions"] = []
+    import(data)
+    assert_patch_status(0)
+
+    data["withdrawn_at"] = "2026-09-23T12:00:00Z"
+    url = "https://advisories.ecosyste.ms/api/v1/advisories?ecosystem=rubygems&package_name=devise-two-factor&per_page=100"
+    output = run_script("advisories.rb", "--refresh", "1", stubs: [
+      ["get", url, 200, {}, JSON.generate([data])]
+    ])
+    assert_includes output, "advisories=0 unpatched=0"
+    assert_includes output, "0 advisory rows, 0 unpatched, 0 repos"
+    assert_equal data["withdrawn_at"], @db.get_first_value("SELECT withdrawn_at FROM advisories")
+    assert_equal 1, @db.get_first_value("SELECT COUNT(*) FROM advisories")
+    assert_equal 0, @db.get_first_value("SELECT advisories_count FROM repos")
+    assert_equal 0, @db.get_first_value("SELECT unpatched_advisories_count FROM repos")
+    run_script("report.rb")
+    assert_empty CSV.read(File.join(@directory, "out", "unpatched.csv"), headers: true)
+
+    output = run_script("advisories.rb")
+    assert_includes output, "0 advisory rows, 0 unpatched, 0 repos"
+    assert_equal data["withdrawn_at"], JSON.parse(File.read(@cache_path)).first["withdrawn_at"]
+  end
+
+  def test_new_withdrawn_advisory_is_stored_without_being_counted
+    data = advisory
+    data["withdrawn_at"] = "2026-09-23T12:00:00Z"
+    output = import(data)
+    assert_equal data["withdrawn_at"], @db.get_first_value("SELECT withdrawn_at FROM advisories")
+    assert_equal 0, @db.get_first_value("SELECT advisories_count FROM repos")
+    assert_includes output, "0 advisory rows, 0 unpatched, 0 repos"
+  end
 end
