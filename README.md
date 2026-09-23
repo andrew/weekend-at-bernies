@@ -10,7 +10,7 @@ The failure mode we care about: a security report or a breaking dependency updat
 
 Run the tests with:
 
-    ruby -Itest test/science_collector_test.rb
+    ruby -Itest -e 'Dir.glob("test/*_test.rb").sort.each { |file| require_relative file }'
 
 ## Pipeline
 
@@ -33,6 +33,27 @@ Run the tests with:
 The signals stack as proofs of life: a recent release, a recent default-branch commit, an active issue maintainer or a merged PR is enough to mark a repo alive and skip the expensive checks. Run `classify.rb` between steps; `clone.rb` and `deps.rb` skip repos already bucketed `active` (pass `--all` to override). `clone.rb` does a `--depth 1 --bare --filter=blob:none` clone per repo to read the real default-branch HEAD date, since `pushed_at` from the API covers any branch and lags. `deps.rb` measures drift: for each package's latest release it fetches the declared direct dependencies, looks up each dep's current latest, and records `majors_behind`.
 
 Some repos won't be indexed by the issues or commits services yet. The lookup triggers a background sync, so a re-run a day or two later (after `rm cache/issues cache/commits`) will fill more in. Until then those repos sit in `unknown`.
+
+## Custom package lists
+
+`mydataset.rb` imports a CSV list of Ruby gems. Each row contains `pkg:gem`, the gem name and an optional comment. There is no header; blank lines are skipped and comments are ignored. Quote comments that contain commas.
+
+    pkg:gem, ruby_rncryptor_secured
+    pkg:gem, bundle-audit, check advisories
+
+Use a separate database to restrict enrichment and classification to your list:
+
+    export BERNIES_DB=mydataset.db
+    ruby mydataset.rb ./mydata.txt
+    ruby repos.rb
+    ruby commits.rb
+    ruby issues.rb
+    ruby advisories.rb
+    ruby classify.rb
+
+This replaces the `fetch.rb` step. Running `fetch.rb` afterward also imports the critical-package collection. Without `BERNIES_DB`, the importer writes to `bernies.db`. The existing `report.rb` command always reads `bernies.db`.
+
+The importer validates all rows before making requests or writing data. Duplicate entries are fetched once. Missing or unavailable packages are reported, valid packages are imported, and the command exits with a nonzero status if any lookup fails. Re-running updates existing entries without deleting packages omitted from the file. Responses are cached under `cache/mydataset`; remove that directory to fetch them again.
 
 ## Science projects
 
