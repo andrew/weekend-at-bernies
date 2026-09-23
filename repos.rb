@@ -20,7 +20,13 @@ LIMIT   = ARGV[0]&.to_i
 FileUtils.mkdir_p(CACHE)
 
 def lookup(repo_url)
-  cached_get(CONN, "/api/v1/repositories/lookup", { url: repo_url }, CACHE)
+  metadata = cached_get(CONN, "/api/v1/repositories/lookup", { url: repo_url }, CACHE)
+  return metadata if metadata
+
+  redirected_url = github_repository_redirect(repo_url, CACHE)
+  return nil unless redirected_url
+
+  cached_get(CONN, "/api/v1/repositories/lookup", { url: redirected_url }, CACHE)
 end
 
 db = SQLite3::Database.new(DB_PATH)
