@@ -17,7 +17,7 @@ class AdvisoriesTest < Minitest::Test
     FileUtils.cp(%w[advisories.rb report.rb http.rb database.rb].map { |name|
       File.expand_path("../#{name}", __dir__)
     }, @directory)
-    @db_path = File.join(@directory, "bernies.db")
+    @db_path = File.join(@directory, "custom.db")
     @db = SQLite3::Database.new(@db_path)
     @db.results_as_hash = true
     Bernies.create_core_tables(@db)
@@ -60,9 +60,9 @@ class AdvisoriesTest < Minitest::Test
     }
   end
 
-  def run_script(name)
+  def run_script(name, db_path: @db_path)
     output, status = Open3.capture2e(
-      { "BERNIES_DB" => @db_path }, RbConfig.ruby, "-r", "bundler/setup", File.join(@directory, name)
+      { "BERNIES_DB" => db_path }, RbConfig.ruby, "-r", "bundler/setup", File.join(@directory, name)
     )
     assert status.success?, output
     output
@@ -131,5 +131,21 @@ class AdvisoriesTest < Minitest::Test
     data["packages"].last["versions"] = [{ "vulnerable_version_range" => "= 1.0.0" }]
     import(data)
     assert_patch_status(0)
+  end
+
+  def test_report_uses_custom_database_instead_of_default_database
+    File.write(File.join(@directory, "bernies.db"), "unused database")
+    data = advisory
+    data["packages"].first["versions"] = []
+    import(data)
+    assert_patch_status(0)
+    assert_equal "unused database", File.read(File.join(@directory, "bernies.db"))
+  end
+
+  def test_report_defaults_to_bernies_database
+    import(advisory)
+    @db.execute("VACUUM INTO ?", [File.join(@directory, "bernies.db")])
+    output = run_script("report.rb", db_path: nil)
+    assert_includes output, "wrote 0 unpatched advisories"
   end
 end

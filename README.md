@@ -51,7 +51,7 @@ Use a separate database to restrict enrichment and classification to your list:
     ruby advisories.rb
     ruby classify.rb
 
-This replaces the `fetch.rb` step. Running `fetch.rb` afterward also imports the critical-package collection. Without `BERNIES_DB`, the importer writes to `bernies.db`. The existing `report.rb` command always reads `bernies.db`.
+This replaces the `fetch.rb` step. Running `fetch.rb` afterward also imports the critical-package collection. Without `BERNIES_DB`, the importer writes to `bernies.db`. `report.rb` also respects `BERNIES_DB`, defaulting to `bernies.db`; exports are written to the same `out/` and `findings/` paths regardless of the database selected.
 
 The importer validates all rows before making requests or writing data. Duplicate entries are fetched once. Missing or unavailable packages are reported, valid packages are imported, and the command exits with a nonzero status if any lookup fails. Re-running updates existing entries without deleting packages omitted from the file. Responses are cached under `cache/mydataset`; remove that directory to fetch them again.
 

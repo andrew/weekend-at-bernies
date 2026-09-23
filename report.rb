@@ -13,9 +13,10 @@ require "sqlite3"
 require "csv"
 require "json"
 require "fileutils"
+require_relative "database"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
+DB_PATH = Bernies.database_path
 OUTDIR  = File.join(WORKDIR, "out")
 FileUtils.mkdir_p(OUTDIR)
 
