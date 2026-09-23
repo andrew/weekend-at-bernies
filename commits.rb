@@ -3,7 +3,7 @@
 # counts, bot splits, and dds (development distribution score, a bus-factor
 # proxy). Cached under cache/commits.
 #
-# Usage: ruby commits.rb [LIMIT]
+# Usage: ruby commits.rb [--refresh] [LIMIT]
 
 require "sqlite3"
 require "fileutils"
@@ -14,12 +14,13 @@ WORKDIR = __dir__
 DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "commits")
 CONN    = conn("https://commits.ecosyste.ms")
+REFRESH = !!ARGV.delete("--refresh")
 LIMIT   = ARGV[0]&.to_i
 
 FileUtils.mkdir_p(CACHE)
 
 def lookup(repo_url)
-  cached_get(CONN, "/api/v1/repositories/lookup", { url: repo_url }, CACHE)
+  cached_get(CONN, "/api/v1/repositories/lookup", { url: repo_url }, CACHE, refresh: REFRESH)
 end
 
 db = SQLite3::Database.new(DB_PATH)
@@ -28,7 +29,7 @@ db.results_as_hash = true
 
 urls = db.execute(<<~SQL).map { |r| r["repository_url"] }
   SELECT repository_url FROM repos
-  WHERE commits_synced_at IS NULL
+  #{"WHERE commits_synced_at IS NULL" unless REFRESH}
   ORDER BY (host='github.com') DESC, repository_url
   #{"LIMIT #{LIMIT}" if LIMIT}
 SQL

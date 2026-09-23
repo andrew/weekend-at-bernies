@@ -55,11 +55,11 @@ class ReposTest < Minitest::Test
     "#{API}/api/v1/repositories/lookup?#{URI.encode_www_form(url: url)}"
   end
 
-  def run_repos(stubs)
+  def run_repos(stubs, *args)
     File.write(File.join(@directory, "stubs.json"), JSON.generate(stubs))
     output, status = Open3.capture2e(
       { "BERNIES_DB" => File.join(@directory, "repos.db"), "HTTP_STUBS" => File.join(@directory, "stubs.json") },
-      RbConfig.ruby, "-r", "bundler/setup", "-r", File.join(@directory, "adapter.rb"), File.join(@directory, "repos.rb"), "1"
+      RbConfig.ruby, "-r", "bundler/setup", "-r", File.join(@directory, "adapter.rb"), File.join(@directory, "repos.rb"), "1", *args
     )
     assert status.success?, output
     output
@@ -175,5 +175,36 @@ class ReposTest < Minitest::Test
     ])
     assert_includes output, "refreshed 0, no data for 1"
     assert_nil @db.get_first_value("SELECT repos_synced_at FROM repos")
+  end
+
+  def test_refresh_revisits_synced_rows_and_replaces_cached_metadata
+    run_repos([["get", lookup_url(OLD_URL), 200, {}, JSON.generate(metadata)]])
+    assert_includes run_repos([]), "0 repos to refresh"
+    updated = metadata.merge("stargazers_count" => 321, "archived" => true)
+    run_repos([["get", lookup_url(OLD_URL), 200, {}, JSON.generate(updated)]], "--refresh")
+    assert_equal 321, @db.get_first_value("SELECT stars FROM repos")
+    assert_equal 1, @db.get_first_value("SELECT archived FROM repos")
+
+    @db.execute("UPDATE repos SET repos_synced_at=NULL, stars=0")
+    run_repos([])
+    assert_equal 321, @db.get_first_value("SELECT stars FROM repos")
+  end
+
+  def test_refresh_rechecks_cached_github_redirects
+    run_repos([
+      ["get", lookup_url(OLD_URL), 404, {}, "null"],
+      ["head", OLD_URL, 301, { "location" => NEW_URL }, ""],
+      ["head", NEW_URL, 200, {}, ""],
+      ["get", lookup_url(NEW_URL), 200, {}, JSON.generate(metadata)]
+    ])
+    destination = "https://github.com/example/moved"
+    updated = metadata.merge("stargazers_count" => 456)
+    run_repos([
+      ["get", lookup_url(OLD_URL), 404, {}, "null"],
+      ["head", OLD_URL, 301, { "location" => destination }, ""],
+      ["head", destination, 200, {}, ""],
+      ["get", lookup_url(destination), 200, {}, JSON.generate(updated)]
+    ], "--refresh")
+    assert_equal 456, @db.get_first_value("SELECT stars FROM repos")
   end
 end

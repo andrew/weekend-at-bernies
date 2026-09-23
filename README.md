@@ -28,11 +28,13 @@ Run the tests with:
 
     ruby report.rb           # stats + out/*.csv
 
-`fetch.rb` defaults to all sixteen upstream registries; pass names to limit (`ruby fetch.rb rubygems.org hex.pm`). Every HTTP response is cached under `cache/<step>/` keyed by URL so re-runs are local-only and the db can be rebuilt after schema changes. Each enrichment script skips rows it has already touched, takes an optional row limit, and is safe to re-run; delete the matching cache dir to force a refetch.
+`fetch.rb` defaults to all sixteen upstream registries; pass names to limit (`ruby fetch.rb rubygems.org hex.pm`). HTTP responses are cached under `cache/<step>/` keyed by URL. `repos.rb`, `commits.rb` and `issues.rb` skip rows already synced; `advisories.rb` reprocesses cached responses on each run. These four enrichment scripts take an optional row limit.
+
+Pass `--refresh` to `fetch.rb`, `mydataset.rb`, `repos.rb`, `commits.rb`, `issues.rb` or `advisories.rb` to fetch fresh responses and replace their cache entries. For the repository, commit and issue collectors, this also revisits previously synced rows. For example, `ruby issues.rb --refresh 10` refreshes the first ten repositories. Rerun `classify.rb` and `report.rb` after refreshing the data.
 
 The signals stack as proofs of life: a recent release, a recent default-branch commit, an active issue maintainer or a merged PR is enough to mark a repo alive and skip the expensive checks. Run `classify.rb` between steps; `clone.rb` and `deps.rb` skip repos already bucketed `active` (pass `--all` to override). `clone.rb` does a `--depth 1 --bare --filter=blob:none` clone per repo to read the real default-branch HEAD date, since `pushed_at` from the API covers any branch and lags. `deps.rb` measures drift: for each package's latest release it fetches the declared direct dependencies, looks up each dep's current latest, and records `majors_behind`.
 
-Some repos won't be indexed by the issues or commits services yet. The lookup triggers a background sync, so a re-run a day or two later (after `rm cache/issues cache/commits`) will fill more in. Until then those repos sit in `unknown`.
+Some repos won't be indexed by the issues or commits services yet. The lookup triggers a background sync, so rerunning `ruby issues.rb --refresh` and `ruby commits.rb --refresh` a day or two later can fill more in. Until then those repos sit in `unknown`.
 
 ## Custom package lists
 
@@ -53,7 +55,7 @@ Use a separate database to restrict enrichment and classification to your list:
 
 This replaces the `fetch.rb` step. Running `fetch.rb` afterward also imports the critical-package collection. Without `BERNIES_DB`, the importer writes to `bernies.db`. `report.rb` also respects `BERNIES_DB`, defaulting to `bernies.db`; exports are written to the same `out/` and `findings/` paths regardless of the database selected.
 
-The importer validates all rows before making requests or writing data. Duplicate entries are fetched once. Missing or unavailable packages are reported, valid packages are imported, and the command exits with a nonzero status if any lookup fails. Re-running updates existing entries without deleting packages omitted from the file. Responses are cached under `cache/mydataset`; remove that directory to fetch them again.
+The importer validates all rows before making requests or writing data. Duplicate entries are fetched once. Missing or unavailable packages are reported, valid packages are imported, and the command exits with a nonzero status if any lookup fails. Re-running updates existing entries without deleting packages omitted from the file. Responses are cached under `cache/mydataset`; use `ruby mydataset.rb --refresh ./mydata.txt` to fetch them again.
 
 ## Science projects
 

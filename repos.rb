@@ -4,7 +4,7 @@
 # badly, so this gives a fresher view before classification. Cached under
 # cache/repos.
 #
-# Usage: ruby repos.rb [LIMIT]
+# Usage: ruby repos.rb [--refresh] [LIMIT]
 
 require "sqlite3"
 require "fileutils"
@@ -15,18 +15,19 @@ WORKDIR = __dir__
 DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "repos")
 CONN    = conn("https://repos.ecosyste.ms")
+REFRESH = !!ARGV.delete("--refresh")
 LIMIT   = ARGV[0]&.to_i
 
 FileUtils.mkdir_p(CACHE)
 
 def lookup(repo_url)
-  metadata = cached_get(CONN, "/api/v1/repositories/lookup", { url: repo_url }, CACHE)
+  metadata = cached_get(CONN, "/api/v1/repositories/lookup", { url: repo_url }, CACHE, refresh: REFRESH)
   return metadata if metadata
 
-  redirected_url = github_repository_redirect(repo_url, CACHE)
+  redirected_url = github_repository_redirect(repo_url, CACHE, refresh: REFRESH)
   return nil unless redirected_url
 
-  cached_get(CONN, "/api/v1/repositories/lookup", { url: redirected_url }, CACHE)
+  cached_get(CONN, "/api/v1/repositories/lookup", { url: redirected_url }, CACHE, refresh: REFRESH)
 end
 
 db = SQLite3::Database.new(DB_PATH)
@@ -35,7 +36,7 @@ db.results_as_hash = true
 
 urls = db.execute(<<~SQL).map { |r| r["repository_url"] }
   SELECT repository_url FROM repos
-  WHERE repos_synced_at IS NULL
+  #{"WHERE repos_synced_at IS NULL" unless REFRESH}
   ORDER BY (host='github.com') DESC, repository_url
   #{"LIMIT #{LIMIT}" if LIMIT}
 SQL

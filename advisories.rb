@@ -8,7 +8,7 @@
 # counts up to repos.advisories_count / repos.unpatched_advisories_count.
 # Cached under cache/advisories.
 #
-# Usage: ruby advisories.rb [LIMIT]
+# Usage: ruby advisories.rb [--refresh] [LIMIT]
 
 require "sqlite3"
 require "fileutils"
@@ -20,12 +20,13 @@ WORKDIR = __dir__
 DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "advisories")
 CONN    = conn("https://advisories.ecosyste.ms")
+REFRESH = !!ARGV.delete("--refresh")
 LIMIT   = ARGV[0]&.to_i
 
 FileUtils.mkdir_p(CACHE)
 
 def fetch(ecosystem, name)
-  cached_get(CONN, "/api/v1/advisories", { ecosystem: ecosystem, package_name: name, per_page: 100 }, CACHE) || []
+  cached_get(CONN, "/api/v1/advisories", { ecosystem: ecosystem, package_name: name, per_page: 100 }, CACHE, refresh: REFRESH) || []
 end
 
 db = SQLite3::Database.new(DB_PATH)

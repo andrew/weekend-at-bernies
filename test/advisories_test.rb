@@ -17,6 +17,7 @@ class AdvisoriesTest < Minitest::Test
     FileUtils.cp(%w[advisories.rb report.rb http.rb database.rb].map { |name|
       File.expand_path("../#{name}", __dir__)
     }, @directory)
+    FileUtils.cp(File.expand_path("http_adapter.rb", __dir__), @directory)
     @db_path = File.join(@directory, "custom.db")
     @db = SQLite3::Database.new(@db_path)
     @db.results_as_hash = true
@@ -60,9 +61,13 @@ class AdvisoriesTest < Minitest::Test
     }
   end
 
-  def run_script(name, db_path: @db_path)
+  def run_script(name, *args, stubs: [], db_path: @db_path)
+    stub_path = File.join(@directory, "stubs.json")
+    File.write(stub_path, JSON.generate(stubs))
     output, status = Open3.capture2e(
-      { "BERNIES_DB" => db_path }, RbConfig.ruby, "-r", "bundler/setup", File.join(@directory, name)
+      { "BERNIES_DB" => db_path, "HTTP_STUBS" => stub_path },
+      RbConfig.ruby, "-r", "bundler/setup", "-r", File.join(@directory, "http_adapter.rb"),
+      File.join(@directory, name), *args
     )
     assert status.success?, output
     output

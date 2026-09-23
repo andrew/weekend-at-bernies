@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# Usage: ruby mydataset.rb FILE
+# Usage: ruby mydataset.rb [--refresh] FILE
 
 require "csv"
 require "sqlite3"
@@ -8,7 +8,8 @@ require_relative "http"
 require_relative "database"
 require_relative "package_writer"
 
-abort "Usage: ruby mydataset.rb FILE" unless ARGV.size == 1
+refresh = !!ARGV.delete("--refresh")
+abort "Usage: ruby mydataset.rb [--refresh] FILE" unless ARGV.size == 1
 
 names = []
 errors = []
@@ -40,7 +41,7 @@ imported = unavailable = 0
 begin
   names.uniq.each do |name|
     path = "/api/v1/registries/rubygems.org/packages/#{URI.encode_www_form_component(name)}"
-    package = cached_get(connection, path, {}, cache)
+    package = cached_get(connection, path, {}, cache, refresh: refresh)
     unless package.is_a?(Hash) && package["purl"] && package["name"] && package["ecosystem"]
       warn "#{name}: package not found or unavailable"
       unavailable += 1

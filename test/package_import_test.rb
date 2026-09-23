@@ -149,7 +149,7 @@ class PackageImportTest < Minitest::Test
 
   def test_requires_a_readable_nonempty_file
     output = run_script("mydataset.rb", [], success: false)
-    assert_includes output, "Usage: ruby mydataset.rb FILE"
+    assert_includes output, "Usage: ruby mydataset.rb [--refresh] FILE"
     output = run_script("mydataset.rb", [@input], success: false)
     assert_includes output, "No such file"
     File.write(@input, "\n")
@@ -169,5 +169,30 @@ class PackageImportTest < Minitest::Test
     assert_package_stored
     output = run_script("fetch.rb", ["rubygems.org"])
     assert_includes output, "2 packages, 1 repos"
+  end
+
+  def test_custom_import_refreshes_cached_package_metadata
+    File.write(@input, "pkg:gem, spina\n")
+    run_script("mydataset.rb", [@input], [response("spina")])
+    updated = package.merge("downloads" => 999)
+    run_script("mydataset.rb", ["--refresh", @input], [response("spina", updated)])
+    assert_equal 999, db.get_first_value("SELECT downloads FROM packages")
+    run_script("mydataset.rb", [@input])
+    assert_equal 999, db.get_first_value("SELECT downloads FROM packages")
+  end
+
+  def test_fetch_refreshes_cached_pages_and_follows_new_pagination
+    first = "#{API}?critical=true&per_page=100&page=1"
+    second = "#{API}?critical=true&per_page=100&page=2"
+    run_script("fetch.rb", ["rubygems.org"], [[first, 200, {}, JSON.generate([package])]])
+    updated = package.merge("downloads" => 999)
+    output = run_script("fetch.rb", ["rubygems.org", "--refresh"], [
+      [first, 200, { "link" => "<#{second}>; rel=\"next\"" }, JSON.generate([updated])],
+      [second, 200, {}, JSON.generate([package("katello")])]
+    ])
+    assert_includes output, "2 packages, 1 repos"
+    assert_equal 999, db.get_first_value("SELECT downloads FROM packages WHERE name='spina'")
+    run_script("fetch.rb", ["rubygems.org"])
+    assert_equal 999, db.get_first_value("SELECT downloads FROM packages WHERE name='spina'")
   end
 end

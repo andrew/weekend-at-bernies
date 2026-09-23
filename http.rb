@@ -23,13 +23,13 @@ def conn(base)
   end
 end
 
-def github_repository_redirect(repo_url, cache_dir)
+def github_repository_redirect(repo_url, cache_dir, refresh: false)
   github_repo = %r{\Ahttps://github\.com/[^/?#]+/[^/?#]+/?\z}i
   return nil unless repo_url.match?(github_repo)
 
   key = Digest::SHA256.hexdigest(repo_url)[0, 32]
   file = File.join(cache_dir, "redirect-#{key}.json")
-  return JSON.parse(File.read(file)) if File.exist?(file)
+  return JSON.parse(File.read(file)) if !refresh && File.exist?(file)
 
   res = conn("https://github.com").head(repo_url)
   return nil unless res.success?
@@ -45,10 +45,10 @@ rescue Faraday::Error => e
 end
 
 # GET with on-disk cache. 5xx after retries returns nil and is NOT cached.
-def cached_get(connection, path, params, cache_dir)
+def cached_get(connection, path, params, cache_dir, refresh: false)
   key  = Digest::SHA256.hexdigest([connection.url_prefix.to_s, path, params.sort].join("|"))[0, 32]
   file = File.join(cache_dir, "#{key}.json")
-  if File.exist?(file)
+  if !refresh && File.exist?(file)
     body = File.read(file)
     return body == "null" ? nil : JSON.parse(body)
   end

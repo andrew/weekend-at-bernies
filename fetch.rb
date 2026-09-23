@@ -5,7 +5,7 @@
 #
 # Responses cached under cache/packages so re-runs are cheap.
 #
-# Usage: ruby fetch.rb [registry ...]
+# Usage: ruby fetch.rb [--refresh] [registry ...]
 
 require "json"
 require "sqlite3"
@@ -20,6 +20,7 @@ WORKDIR = __dir__
 DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "packages")
 CONN    = conn("https://packages.ecosyste.ms")
+REFRESH = !!ARGV.delete("--refresh")
 
 REGISTRIES = %w[
   npmjs.org
@@ -45,7 +46,7 @@ FileUtils.mkdir_p(CACHE)
 def get(url)
   key = Digest::SHA256.hexdigest(url)[0, 32]
   path = File.join(CACHE, "#{key}.json")
-  if File.exist?(path)
+  if !REFRESH && File.exist?(path)
     data = JSON.parse(File.read(path))
     return [data["packages"], data["next"]]
   end
