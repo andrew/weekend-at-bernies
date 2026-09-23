@@ -88,7 +88,7 @@ pkgs.each_with_index do |p, i|
     versions = entry ? (entry["versions"] || []) : []
     ranges  = versions.map { |v| v["vulnerable_version_range"] }.compact.join("; ")
     patched_versions = versions.map { |v| v["first_patched_version"] }
-    has_patch = !patched_versions.empty? && patched_versions.all? { |v| v && !v.to_s.empty? }
+    has_patch = patched_versions.any? { |v| v && !v.to_s.strip.empty? }
     ins.execute(
       p["purl"], p["ecosystem"], p["name"], p["repository_url"],
       ident, a["title"], a["severity"], a["cvss_score"],

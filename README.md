@@ -125,7 +125,7 @@ Some queries:
 
   * `out/bernies.csv`: every dead or dormant repo ranked by `dependent_repos`, with all activity signals and advisory counts. An existing advisory means that one has already been hit; the rest are exposed to the same outcome the next time someone goes looking.
   * `out/dead.csv`, `out/dormant.csv`: per-bucket subsets with the same columns.
-  * `out/unpatched.csv`: advisories with no `first_patched_version`, across all buckets.
+  * `out/unpatched.csv`: advisories with no recorded `first_patched_version` for any affected range of the package, across all buckets. A patched version on one range is enough to exclude the advisory, even if other ranges have missing patch metadata. This does not imply every affected release line received a patch.
   * `out/buckets-by-ecosystem.csv`: active/dormant/dead/unknown counts and dead% per ecosystem.
   * `out/remediation.csv`, `out/remediation.json`: every non-active package with `situation`, `remediation`, `alternative_purl`, `remediation_source`, `llm_confidence`, top dependent, code size and complexity.
   * `findings/<lang>.csv`: same columns as `remediation.csv`, one file per ecosystem alongside the writeup (e.g. `findings/ruby.csv` for rubygems).
