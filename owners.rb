@@ -147,6 +147,7 @@ todo.each_with_index do |r, i|
   repo = cached_get(CONN, "/api/v1/repositories/lookup", { url: r["repository_url"] }, REPOS_CACHE)
   if repo.nil? || repo["owner_url"].to_s.empty?
     norepo += 1
+    puts ; puts "norepo/miss: #{r["repository_url"]}"
     mark_missing.execute(host, login)
   else
     path = URI.parse(repo["owner_url"]).path
