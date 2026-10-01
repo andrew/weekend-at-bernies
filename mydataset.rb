@@ -44,6 +44,7 @@ begin
     package = cached_get(connection, path, {}, cache, refresh: refresh)
     unless package.is_a?(Hash) && package["purl"] && package["name"] && package["ecosystem"]
       warn "#{name}: package not found or unavailable"
+      puts ; puts "miss: #{name}"
       unavailable += 1
       next
     end
