@@ -6,6 +6,7 @@ require "rbconfig"
 require "sqlite3"
 require "uri"
 require "database"
+require "date"
 
 class ActivityRefreshTest < Minitest::Test
   REPOSITORY = "https://github.com/example/project"
@@ -52,7 +53,7 @@ class ActivityRefreshTest < Minitest::Test
       "issues" => ["active_maintainers_count", { "active_maintainers" => [{ "login" => "maintainer" }] }]
     }.each do |service, (column, activity)|
       @db.execute("UPDATE repos SET commits_synced_at=NULL, issues_synced_at=NULL, past_year_commits=0, active_maintainers_count=0")
-      baseline = { "last_synced_at" => "2026-08-01T00:00:00Z", "past_year_issues_count" => 1,
+      baseline = { "last_synced_at" => (Date.today - 1).iso8601, "past_year_issues_count" => 1,
                    "past_year_total_commits" => 0 }
       run_script("#{service}.rb", [], [response(service, baseline)])
       @db.execute("UPDATE repos SET issues_synced_at=COALESCE(issues_synced_at, ?)", [baseline["last_synced_at"]])
@@ -61,7 +62,7 @@ class ActivityRefreshTest < Minitest::Test
       assert_includes run_script("#{service}.rb"), "0 repos to enrich"
 
       @db.execute("INSERT INTO repos (repository_url, host) VALUES (?, 'github.com')", ["https://github.com/z-example/untouched"])
-      fresh = baseline.merge(activity).merge("last_synced_at" => "2026-09-23T00:00:00Z")
+      fresh = baseline.merge(activity).merge("last_synced_at" => Date.today.iso8601)
       run_script("#{service}.rb", ["--refresh", "1"], [response(service, fresh)])
       assert_operator @db.get_first_value("SELECT #{column} FROM repos WHERE repository_url=?", [REPOSITORY]), :>, 0
       assert_equal fresh["last_synced_at"], @db.get_first_value("SELECT #{service}_synced_at FROM repos WHERE repository_url=?", [REPOSITORY])

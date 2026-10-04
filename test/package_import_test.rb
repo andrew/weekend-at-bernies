@@ -4,6 +4,8 @@ require "json"
 require "open3"
 require "rbconfig"
 require "sqlite3"
+require "date"
+require "uri"
 
 class PackageImportTest < Minitest::Test
   API = "https://packages.ecosyste.ms/api/v1/registries/rubygems.org/packages"
@@ -12,7 +14,7 @@ class PackageImportTest < Minitest::Test
     @directory = Dir.mktmpdir("package-import-test")
     @db_path = File.join(@directory, "custom.db")
     @input = File.join(@directory, "mydata.txt")
-    FileUtils.cp(%w[mydataset.rb fetch.rb http.rb database.rb package_writer.rb].map { |name|
+    FileUtils.cp(%w[mydataset.rb fetch.rb repos.rb classify.rb http.rb database.rb package_writer.rb].map { |name|
       File.expand_path("../#{name}", __dir__)
     }, @directory)
     File.write(File.join(@directory, "adapter.rb"), <<~RUBY)
@@ -175,10 +177,46 @@ class PackageImportTest < Minitest::Test
     File.write(@input, "pkg:gem, spina\n")
     run_script("mydataset.rb", [@input], [response("spina")])
     updated = package.merge("downloads" => 999)
+    updated["repo_metadata"]["stargazers_count"] = 300
     run_script("mydataset.rb", ["--refresh", @input], [response("spina", updated)])
     assert_equal 999, db.get_first_value("SELECT downloads FROM packages")
+    assert_equal 300, db.get_first_value("SELECT stars FROM repos")
     run_script("mydataset.rb", [@input])
     assert_equal 999, db.get_first_value("SELECT downloads FROM packages")
+  end
+
+  def test_reimports_preserve_direct_repository_metadata_and_classification
+    File.write(@input, "pkg:gem, spina\n")
+    run_script("mydataset.rb", [@input], [response("spina")])
+    url = "https://github.com/spinacms/spina"
+    synced_at = Date.today.iso8601
+    fresh = { "archived" => false, "pushed_at" => synced_at, "last_synced_at" => synced_at,
+              "stargazers_count" => 500, "language" => "Ruby" }
+    lookup = "https://repos.ecosyste.ms/api/v1/repositories/lookup?#{URI.encode_www_form(url: url)}"
+    run_script("repos.rb", [], [[lookup, 200, {}, JSON.generate(fresh)]])
+    run_script("classify.rb", [])
+    assert_equal "active", db.get_first_value("SELECT bucket FROM repos")
+
+    stale = package.merge("downloads" => 999)
+    stale["repo_metadata"].merge!("archived" => true, "pushed_at" => "2020-01-01T00:00:00Z",
+                                 "last_synced_at" => "2020-01-01T00:00:00Z", "language" => "JavaScript")
+    page = "#{API}?critical=true&per_page=100&page=1"
+    [
+      ["mydataset.rb", ["--refresh", @input], [response("spina", stale)]],
+      ["fetch.rb", ["--refresh", "rubygems.org"], [[page, 200, {}, JSON.generate([stale])]]]
+    ].each do |script, args, stubs|
+      run_script(script, args, stubs)
+      assert_equal 999, db.get_first_value("SELECT downloads FROM packages")
+      repo = db.get_first_row("SELECT * FROM repos")
+      assert_equal 0, repo["archived"]
+      assert_equal synced_at, repo["pushed_at"]
+      assert_equal synced_at, repo["repos_synced_at"]
+      assert_equal 500, repo["stars"]
+      assert_equal "Ruby", repo["language"]
+      assert_includes run_script("repos.rb", []), "0 repos to refresh"
+      run_script("classify.rb", [])
+      assert_equal "active", db.get_first_value("SELECT bucket FROM repos")
+    end
   end
 
   def test_fetch_refreshes_cached_pages_and_follows_new_pagination

@@ -32,6 +32,8 @@ Run the tests with:
 
 Pass `--refresh` to `fetch.rb`, `mydataset.rb`, `repos.rb`, `commits.rb`, `issues.rb` or `advisories.rb` to fetch fresh responses and replace their cache entries. For the repository, commit and issue collectors, this also revisits previously synced rows. For example, `ruby issues.rb --refresh 10` refreshes the first ten repositories. Rerun `classify.rb` and `report.rb` after refreshing the data. Advisory withdrawals are stored and excluded from advisory counts and `unpatched.csv`.
 
+Package imports preserve repository fields once `repos.rb` has saved a source sync date. Refresh those fields through `repos.rb --refresh`; importing packages again updates package fields without replacing directly collected repository data.
+
 The signals stack as proofs of life: a recent release, a recent default-branch commit, an active issue maintainer or a merged PR is enough to mark a repo alive and skip the expensive checks. Run `classify.rb` between steps; `clone.rb` and `deps.rb` skip repos already bucketed `active` (pass `--all` to override). `clone.rb` does a `--depth 1 --bare --filter=blob:none` clone per repo to read the real default-branch HEAD date, since `pushed_at` from the API covers any branch and lags. `deps.rb` measures drift: for each package's latest release it fetches the declared direct dependencies, looks up each dep's current latest, and records `majors_behind`.
 
 Some repos won't be indexed by the issues or commits services yet. The lookup triggers a background sync, so rerunning `ruby issues.rb --refresh` and `ruby commits.rb --refresh` a day or two later can fill more in. Until then those repos sit in `unknown`.
@@ -81,6 +83,10 @@ The science API does not currently return `science_score` or allow API sorting b
   * **unknown**: nobody filed anything and nothing happened; responsiveness is untested. Also covers repos the issues service hasn't indexed.
 
 `dead` is deliberately a hard claim: it requires evidence that someone knocked and nobody answered. Zero commits is never sufficient on its own; a finished package with no commits in five years whose author would still merge a security fix is dormant, not dead. Thresholds live at the top of `classify.rb` and the `signals` column on each repo records the raw inputs so cutoffs can be argued over with `SELECT` rather than re-collection.
+
+Archive status and rolling commit and issue counts support classification only when their source sync date is at most 365 days old. Missing, invalid or future sync dates also exclude those observations. The saved values remain available, and `signals` identifies excluded sources with entries such as `issues:stale` or `commits:missing`. Dated releases, pushes and individual commits still use the existing one-year activity window; without usable evidence, the result is `unknown`. Refreshing a response does not make its contents current if the service still returns an old sync date.
+
+The main, per-bucket and remediation reports include repository, commit and issue sync dates alongside `classified_at`. Remediation exports also include `signals`, so an `unknown` result can be checked against missing or stale observations.
 
 ## Remediation
 

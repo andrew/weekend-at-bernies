@@ -25,6 +25,7 @@ DB_PATH = Bernies.database_path
 ACTIVE_COMMITS_PER_YEAR = 12
 STALE_PUSH_DAYS         = 730
 STALE_RELEASE_DAYS      = 365
+MAX_EVIDENCE_AGE_DAYS   = 365
 
 db = SQLite3::Database.new(DB_PATH)
 db.busy_timeout = 5000
@@ -37,6 +38,15 @@ def days_since(ts, today)
   (today - Date.parse(ts)).to_i
 rescue
   nil
+end
+
+def evidence_status(ts, today)
+  return "missing" if ts.nil? || ts.empty?
+
+  age = days_since(ts, today)
+  return "invalid" if age.nil? || age.negative?
+
+  age > MAX_EVIDENCE_AGE_DAYS ? "stale" : "current"
 end
 
 latest_release = {}
@@ -64,18 +74,22 @@ db.execute("SELECT * FROM repos") do |r|
   ds_release = days_since(latest_release[url], today)
   ds_code    = ds_commit || ds_push
 
-  py_commits    = r["past_year_commits"]
+  evidence = %w[repos commits issues].to_h do |source|
+    [source, evidence_status(r["#{source}_synced_at"], today)]
+  end
+  have_repo    = evidence["repos"] == "current"
+  have_commits = evidence["commits"] == "current"
+  have_issues  = evidence["issues"] == "current"
+
+  py_commits    = have_commits ? r["past_year_commits"] : nil
   py_bots       = r["past_year_bot_commits"] || 0
   human_commits = py_commits ? [py_commits - py_bots, 0].max : nil
-  active_maint  = r["active_maintainers_count"]
+  active_maint  = have_issues ? r["active_maintainers_count"] : nil
   closed        = (r["past_year_issues_closed"] || 0) + (r["past_year_prs_closed"] || 0)
   merged        = r["past_year_prs_merged"] || 0
 
-  have_commits = !r["commits_synced_at"].nil?
-  have_issues  = !r["issues_synced_at"].nil?
-
-  signals = []
-  signals << "archived"                       if r["archived"] == 1
+  signals = evidence.filter_map { |source, status| "#{source}:#{status}" unless status == "current" }
+  signals << "archived"                       if have_repo && r["archived"] == 1
   signals << "repo:#{r['repo_status']}"       if r["repo_status"] && !r["repo_status"].empty?
   signals << "pkg:#{pkg_status[url]}"         if pkg_status[url]
   signals << "commit:#{ds_commit}d"           if ds_commit
@@ -103,7 +117,7 @@ db.execute("SELECT * FROM repos") do |r|
   confirmed_unresponsive = asked && !someone_home
 
   bucket =
-    if r["archived"] == 1
+    if have_repo && r["archived"] == 1
       "dead"
     elsif confirmed_unresponsive
       "dead"

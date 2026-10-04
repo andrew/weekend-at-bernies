@@ -66,7 +66,8 @@ def export_bucket(db, bucket, path)
            r.days_since_release, r.days_since_commit, r.days_since_push,
            r.past_year_commits, r.past_year_committers,
            r.active_maintainers_count, r.past_year_prs_merged, r.past_year_issues_closed,
-           r.advisories_count, r.unpatched_advisories_count, r.signals
+           r.advisories_count, r.unpatched_advisories_count, r.signals,
+           r.repos_synced_at, r.commits_synced_at, r.issues_synced_at, r.classified_at
     FROM repos r JOIN packages p ON p.repository_url = r.repository_url
     WHERE r.bucket = ?
     GROUP BY r.repository_url
@@ -76,7 +77,7 @@ def export_bucket(db, bucket, path)
             registry_maintainers stars archived language days_since_release days_since_commit
             days_since_push past_year_commits past_year_committers active_maintainers_count
             past_year_prs_merged past_year_issues_closed advisories_count
-            unpatched_advisories_count signals]
+            unpatched_advisories_count signals repos_synced_at commits_synced_at issues_synced_at classified_at]
   CSV.open(path, "w") do |csv|
     csv << cols
     rows.each { |r| csv << r.values_at(*cols) }
@@ -100,7 +101,8 @@ bernies = db.execute <<~SQL
          r.past_year_issues_closed, r.past_year_prs_merged,
          COALESCE(r.advisories_count, 0)          AS advisories,
          COALESCE(r.unpatched_advisories_count,0) AS unpatched_advisories,
-         r.archived, r.signals
+         r.archived, r.signals,
+         r.repos_synced_at, r.commits_synced_at, r.issues_synced_at, r.classified_at
   FROM repos r JOIN packages p ON p.repository_url = r.repository_url
   WHERE r.bucket IN ('dead','dormant')
   GROUP BY r.repository_url
@@ -110,7 +112,8 @@ BERNIES_COLS = %w[repository_url bucket ecosystems package_names dependent_repos
                   downloads stars language days_since_release days_since_commit days_since_push
                   past_year_commits past_year_committers dds active_maintainers_count
                   registry_maintainers past_year_issues past_year_prs past_year_issues_closed
-                  past_year_prs_merged advisories unpatched_advisories archived signals]
+                  past_year_prs_merged advisories unpatched_advisories archived signals
+                  repos_synced_at commits_synced_at issues_synced_at classified_at]
 CSV.open(File.join(OUTDIR, "bernies.csv"), "w") do |csv|
   csv << BERNIES_COLS
   bernies.each { |r| csv << r.values_at(*BERNIES_COLS) }
@@ -141,7 +144,8 @@ remediation = db.execute <<~SQL
          p.llm_confidence, p.dependent_repos, p.top1_dependent,
          r.code_loc, r.complexity, r.has_native,
          COALESCE(r.unpatched_advisories_count, 0) AS unpatched_advisories,
-         p.repository_url
+         p.repository_url, r.signals,
+         r.repos_synced_at, r.commits_synced_at, r.issues_synced_at, r.classified_at
   FROM packages p LEFT JOIN repos r ON r.repository_url = p.repository_url
   WHERE r.bucket IN ('dead','dormant','unknown')
   ORDER BY p.dependent_repos DESC NULLS LAST
@@ -149,7 +153,8 @@ SQL
 REMEDIATION_COLS = %w[purl name ecosystem bucket situation eol_direct dead_transitive_count
                       remediation alternative_purl remediation_notes remediation_source
                       llm_confidence dependent_repos top1_dependent code_loc complexity
-                      has_native unpatched_advisories repository_url]
+                      has_native unpatched_advisories repository_url signals
+                      repos_synced_at commits_synced_at issues_synced_at classified_at]
 CSV.open(File.join(OUTDIR, "remediation.csv"), "w") do |csv|
   csv << REMEDIATION_COLS
   remediation.each { |r| csv << r.values_at(*REMEDIATION_COLS) }

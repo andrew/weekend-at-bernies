@@ -24,6 +24,7 @@ module Bernies
         INSERT INTO repos (#{REPO_COLUMNS.join(",")}) VALUES (#{(["?"] * REPO_COLUMNS.size).join(",")})
         ON CONFLICT(repository_url) DO UPDATE SET
           #{(REPO_COLUMNS - %w[repository_url host owner]).map { |c| "#{c}=COALESCE(excluded.#{c}, #{c})" }.join(",")}
+        WHERE repos.repos_synced_at IS NULL
       SQL
       @now = Time.now.utc.iso8601
     end
