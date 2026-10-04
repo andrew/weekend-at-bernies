@@ -34,6 +34,10 @@ Pass `--refresh` to `fetch.rb`, `mydataset.rb`, `repos.rb`, `commits.rb`, `issue
 
 Package imports preserve repository fields once `repos.rb` has saved a source sync date. Refresh those fields through `repos.rb --refresh`; importing packages again updates package fields without replacing directly collected repository data.
 
+`mydataset.rb`, `repos.rb` and `owners.rb` save unresolved lookups in the selected database, with the package, repository or owner identity, endpoint, HTTP status and failure reason. Repository failures also include the GitHub status when checked. A later successful lookup clears its entry. Failed responses are not cached, and reruns retry recorded failures even when older metadata is present; legacy `null` cache entries are fetched again to establish their status.
+
+Pass `--failures FILE` to any of those three commands to export its unresolved lookups as CSV, for example `ruby repos.rb --failures out/repo-failures.csv`. The file is replaced on each export. `report.rb` writes all recorded failures to `out/lookup-failures.csv`, including package names associated with a failed repository. `repository_service_miss` means GitHub returned a repository page while the repository service returned 404; `repository_not_found` means both returned 404. A 404 can also mean a private or otherwise unavailable resource. Rate limits, server errors and timeouts have separate reasons, and unknown HTTP statuses remain blank.
+
 The signals stack as proofs of life: a recent release, a recent default-branch commit, an active issue maintainer or a merged PR is enough to mark a repo alive and skip the expensive checks. Run `classify.rb` between steps; `clone.rb` and `deps.rb` skip repos already bucketed `active` (pass `--all` to override). `clone.rb` does a `--depth 1 --bare --filter=blob:none` clone per repo to read the real default-branch HEAD date, since `pushed_at` from the API covers any branch and lags. `deps.rb` measures drift: for each package's latest release it fetches the declared direct dependencies, looks up each dep's current latest, and records `majors_behind`.
 
 Some repos won't be indexed by the issues or commits services yet. The lookup triggers a background sync, so rerunning `ruby issues.rb --refresh` and `ruby commits.rb --refresh` a day or two later can fill more in. Until then those repos sit in `unknown`.
@@ -113,6 +117,7 @@ Everything lands in `bernies.db` (sqlite, WAL mode):
   * `packages`: one row per critical package (purl). Registry, dependent counts, downloads, latest release, registry maintainers, dep-drift rollups, `top1_share`/`top5_share`/`transit_ratio`, `situation`/`remediation`/`alternative_purl`/`remediation_source`.
   * `repos`: one row per repository_url. Repo metadata, commit/issue stats, clone result, advisory rollups, bucket, signals, `code_loc`/`complexity`/`entry_points`/`has_native` from `size.rb`.
   * `advisories`: one row per (purl, advisory). Severity, CVSS, vulnerable range, first_patched_version, patched flag.
+  * `lookup_failures`: unresolved package, repository and owner lookups, with endpoint, status, reason and last attempt time.
   * `dependencies`: one row per (purl, dep). Requirement, dep's current latest, majors_behind, runtime/dev kind.
   * `dependents`: one row per (purl, rank). Top-N dependent packages by downloads, with description.
 
@@ -138,6 +143,7 @@ Some queries:
   * `out/remediation.csv`, `out/remediation.json`: every non-active package with `situation`, `remediation`, `alternative_purl`, `remediation_source`, `llm_confidence`, top dependent, code size and complexity.
   * `findings/<lang>.csv`: same columns as `remediation.csv`, one file per ecosystem alongside the writeup (e.g. `findings/ruby.csv` for rubygems).
   * `out/tag.csv`: review sheet from `tag.rb`; edit and reimport.
+  * `out/lookup-failures.csv`: unresolved lookups across the import, repository and owner collectors.
   * `out/<ecosystem>-bernies.csv`: per-ecosystem dead+dormant export from `export_ecosystem.rb`.
 
 ## First full run (Apr 2026)

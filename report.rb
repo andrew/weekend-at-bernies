@@ -14,6 +14,7 @@ require "csv"
 require "json"
 require "fileutils"
 require_relative "database"
+require_relative "lookup_failures"
 
 WORKDIR = __dir__
 DB_PATH = Bernies.database_path
@@ -23,6 +24,7 @@ FileUtils.mkdir_p(OUTDIR)
 db = SQLite3::Database.new(DB_PATH)
 db.busy_timeout = 5000
 db.results_as_hash = true
+Bernies::LookupFailures.export(db, File.join(OUTDIR, "lookup-failures.csv"))
 
 puts "== overall =="
 db.execute("SELECT bucket, COUNT(*) AS n FROM repos GROUP BY bucket ORDER BY n DESC").each do |r|
@@ -192,3 +194,4 @@ puts "wrote #{bernies.size} dead+dormant -> out/bernies.csv"
 puts "wrote #{dead.size} dead -> out/dead.csv, #{dormant.size} dormant -> out/dormant.csv"
 puts "wrote #{unpatched.size} unpatched advisories -> out/unpatched.csv"
 puts "wrote out/buckets-by-ecosystem.csv"
+puts "wrote out/lookup-failures.csv"

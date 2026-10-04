@@ -15,7 +15,7 @@ class ClassificationTest < Minitest::Test
   def setup
     @directory = Dir.mktmpdir("classification-test")
     FileUtils.cp(%w[mydataset.rb package_writer.rb repos.rb commits.rb issues.rb classify.rb
-                    advisories.rb report.rb http.rb database.rb].map { |name|
+                    advisories.rb report.rb http.rb database.rb lookup_failures.rb].map { |name|
       File.expand_path("../#{name}", __dir__)
     }, @directory)
     FileUtils.cp(File.expand_path("http_adapter.rb", __dir__), @directory)

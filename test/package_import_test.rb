@@ -14,7 +14,7 @@ class PackageImportTest < Minitest::Test
     @directory = Dir.mktmpdir("package-import-test")
     @db_path = File.join(@directory, "custom.db")
     @input = File.join(@directory, "mydata.txt")
-    FileUtils.cp(%w[mydataset.rb fetch.rb repos.rb classify.rb http.rb database.rb package_writer.rb].map { |name|
+    FileUtils.cp(%w[mydataset.rb fetch.rb repos.rb classify.rb http.rb database.rb package_writer.rb lookup_failures.rb].map { |name|
       File.expand_path("../#{name}", __dir__)
     }, @directory)
     File.write(File.join(@directory, "adapter.rb"), <<~RUBY)

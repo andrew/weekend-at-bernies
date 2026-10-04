@@ -9,6 +9,21 @@ require "fileutils"
 
 UA = "weekend-at-bernies (andrew@ecosyste.ms)"
 
+module Bernies
+  HttpResult = Struct.new(:data, :status, :reason, :url, :host_status, :resolved_url, keyword_init: true)
+end
+
+def http_failure_reason(status)
+  case status
+  when 404 then "not_found"
+  when 401, 403 then "access_denied"
+  when 408 then "timeout"
+  when 429 then "rate_limited"
+  when 500..599 then "server_error"
+  else "http_error"
+  end
+end
+
 def conn(base)
   Faraday.new(url: base, headers: { "User-Agent" => UA, "Accept" => "application/json" }) do |f|
     f.request :retry,
@@ -23,45 +38,75 @@ def conn(base)
   end
 end
 
-def github_repository_redirect(repo_url, cache_dir, refresh: false)
+def github_repository_response(repo_url, cache_dir, refresh: false)
   github_repo = %r{\Ahttps://github\.com/[^/?#]+/[^/?#]+/?\z}i
   return nil unless repo_url.match?(github_repo)
 
   key = Digest::SHA256.hexdigest(repo_url)[0, 32]
   file = File.join(cache_dir, "redirect-#{key}.json")
-  return JSON.parse(File.read(file)) if !refresh && File.exist?(file)
+  if !refresh && File.exist?(file)
+    destination = JSON.parse(File.read(file))
+    return Bernies::HttpResult.new(data: destination, url: destination)
+  end
 
   res = conn("https://github.com").head(repo_url)
-  return nil unless res.success?
+  result = Bernies::HttpResult.new(status: res.status, url: res.env.url.to_s)
+  unless res.success?
+    result.reason = http_failure_reason(res.status)
+    return result
+  end
 
   redirected_url = res.env.url.to_s
-  return nil unless redirected_url.match?(github_repo) && redirected_url != repo_url
+  unless redirected_url.match?(github_repo)
+    result.reason = "invalid_redirect"
+    return result
+  end
 
-  File.write(file, JSON.generate(redirected_url))
-  redirected_url
+  File.write(file, JSON.generate(redirected_url)) if redirected_url != repo_url
+  result.data = redirected_url
+  result
 rescue Faraday::Error => e
-  warn "  #{repo_url}: #{e.class}: #{e.message}"
-  nil
+  Bernies::HttpResult.new(url: repo_url, reason: e.is_a?(Faraday::TimeoutError) ? "timeout" : "network_error")
 end
 
-# GET with on-disk cache. 5xx after retries returns nil and is NOT cached.
 def cached_get(connection, path, params, cache_dir, refresh: false)
+  cached_response(connection, path, params, cache_dir, refresh: refresh).data
+end
+
+def cached_response(connection, path, params, cache_dir, refresh: false)
+  url = connection.build_url(path, params).to_s
   key  = Digest::SHA256.hexdigest([connection.url_prefix.to_s, path, params.sort].join("|"))[0, 32]
   file = File.join(cache_dir, "#{key}.json")
   if !refresh && File.exist?(file)
-    body = File.read(file)
-    return body == "null" ? nil : JSON.parse(body)
+    begin
+      data = JSON.parse(File.read(file))
+    rescue JSON::ParserError
+      data = nil
+    end
+    return Bernies::HttpResult.new(data: data, url: url) unless data.nil?
   end
 
   res = connection.get(path, params)
   sleep 0.1
+  result = Bernies::HttpResult.new(status: res.status, url: url)
   unless res.success?
-    File.write(file, "null") if res.status < 500
-    return nil
+    File.delete(file) if File.exist?(file)
+    result.reason = http_failure_reason(res.status)
+    return result
   end
-  File.write(file, res.body)
-  JSON.parse(res.body)
+  result.data = JSON.parse(res.body)
+  if result.data.nil?
+    File.delete(file) if File.exist?(file)
+    result.reason = "empty_response"
+  else
+    File.write(file, res.body)
+  end
+  result
+rescue JSON::ParserError
+  File.delete(file) if File.exist?(file)
+  Bernies::HttpResult.new(status: res.status, url: url, reason: "invalid_json")
 rescue Faraday::Error => e
+  File.delete(file) if File.exist?(file)
   warn "  #{path} #{params.inspect}: #{e.class}: #{e.message}"
-  nil
+  Bernies::HttpResult.new(url: url, reason: e.is_a?(Faraday::TimeoutError) ? "timeout" : "network_error")
 end

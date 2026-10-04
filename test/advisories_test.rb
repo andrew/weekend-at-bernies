@@ -14,7 +14,7 @@ class AdvisoriesTest < Minitest::Test
 
   def setup
     @directory = Dir.mktmpdir("advisories-test")
-    FileUtils.cp(%w[advisories.rb report.rb http.rb database.rb].map { |name|
+    FileUtils.cp(%w[advisories.rb report.rb http.rb database.rb lookup_failures.rb].map { |name|
       File.expand_path("../#{name}", __dir__)
     }, @directory)
     FileUtils.cp(File.expand_path("http_adapter.rb", __dir__), @directory)

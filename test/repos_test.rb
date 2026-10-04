@@ -15,7 +15,7 @@ class ReposTest < Minitest::Test
 
   def setup
     @directory = Dir.mktmpdir("repos-test")
-    FileUtils.cp(%w[repos.rb http.rb database.rb].map { |name| File.expand_path("../#{name}", __dir__) }, @directory)
+    FileUtils.cp(%w[repos.rb http.rb database.rb lookup_failures.rb].map { |name| File.expand_path("../#{name}", __dir__) }, @directory)
     @cache = File.join(@directory, "cache", "repos")
     FileUtils.mkdir_p(@cache)
     @db = SQLite3::Database.new(File.join(@directory, "repos.db"))
@@ -83,13 +83,14 @@ class ReposTest < Minitest::Test
     ])
 
     @db.execute("UPDATE repos SET repos_synced_at=NULL")
-    assert_refreshed run_repos([])
+    assert_refreshed run_repos([["get", lookup_url(OLD_URL), 404, {}, "null"]])
   end
 
   def test_recovers_an_existing_cached_miss
     key = Digest::SHA256.hexdigest(["#{API}/", "/api/v1/repositories/lookup", { url: OLD_URL }.sort].join("|"))[0, 32]
     File.write(File.join(@cache, "#{key}.json"), "null")
     assert_refreshed run_repos([
+      ["get", lookup_url(OLD_URL), 404, {}, "null"],
       ["head", OLD_URL, 301, { "location" => NEW_URL }, ""],
       ["head", NEW_URL, 200, {}, ""],
       ["get", lookup_url(NEW_URL), 200, {}, JSON.generate(metadata)]
@@ -105,7 +106,7 @@ class ReposTest < Minitest::Test
   def test_missing_or_unmoved_repositories_remain_misses
     [200, 404].each do |status|
       output = run_repos([
-        *([["get", lookup_url(OLD_URL), 404, {}, "null"]] if status == 200),
+        ["get", lookup_url(OLD_URL), 404, {}, "null"],
         ["head", OLD_URL, status, {}, ""]
       ])
       assert_includes output, "refreshed 0, no data for 1"
@@ -149,6 +150,7 @@ class ReposTest < Minitest::Test
     assert_nil @db.get_first_value("SELECT repos_synced_at FROM repos")
 
     assert_refreshed run_repos([
+      ["get", lookup_url(OLD_URL), 404, {}, "null"],
       ["head", OLD_URL, 301, { "location" => NEW_URL }, ""],
       ["head", NEW_URL, 200, {}, ""],
       ["get", lookup_url(NEW_URL), 200, {}, JSON.generate(metadata)]
