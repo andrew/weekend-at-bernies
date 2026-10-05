@@ -9,6 +9,8 @@
 #
 # Usage: ruby dependents.rb [--refresh] [--all] [--ecosystem NAME] [LIMIT]
 
+require_relative "database"
+
 require "sqlite3"
 require "fileutils"
 require "time"
@@ -17,7 +19,7 @@ require "optparse"
 require_relative "http"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
+DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "dependents")
 CONN    = conn("https://packages.ecosyste.ms")
 options = {}

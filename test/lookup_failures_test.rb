@@ -80,13 +80,13 @@ class LookupFailuresTest < Minitest::Test
     assert_equal "unknown", @db.get_first_value("SELECT bucket FROM repos")
     prepare_report
     run_script("report.rb")
-    assert_equal "repository_not_found", CSV.read(File.join(@directory, "out/lookup-failures.csv"), headers: true).first["reason"]
+    assert_equal "repository_not_found", CSV.read(File.join(@directory, "custom.db.output/out/lookup-failures.csv"), headers: true).first["reason"]
 
     run_script("repos.rb", ["--failures", @csv_path], [response(LOOKUP, 200, repo_metadata)])
     assert_empty @db.execute("SELECT * FROM lookup_failures")
     assert_empty CSV.read(@csv_path, headers: true)
     run_script("report.rb")
-    assert_empty CSV.read(File.join(@directory, "out/lookup-failures.csv"), headers: true)
+    assert_empty CSV.read(File.join(@directory, "custom.db.output/out/lookup-failures.csv"), headers: true)
   end
 
   def test_service_miss_is_distinct_from_an_unavailable_repository

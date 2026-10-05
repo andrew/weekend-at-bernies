@@ -141,9 +141,9 @@ class ClassificationTest < Minitest::Test
     url = "https://advisories.ecosyste.ms/api/v1/advisories?ecosystem=rubygems&package_name=example&per_page=100"
     run_script("advisories.rb", [], [["get", url, 200, {}, "[]"]])
     run_script("report.rb")
-    csv = CSV.read(File.join(@directory, "out/remediation.csv"), headers: true).first
-    json = JSON.parse(File.read(File.join(@directory, "out/remediation.json"))).first
-    findings = CSV.read(File.join(@directory, "findings/ruby.csv"), headers: true).first
+    csv = CSV.read(File.join(@directory, "custom.db.output/out/remediation.csv"), headers: true).first
+    json = JSON.parse(File.read(File.join(@directory, "custom.db.output/out/remediation.json"))).first
+    findings = CSV.read(File.join(@directory, "custom.db.output/findings/ruby.csv"), headers: true).first
     [csv, json, findings].each do |row|
       assert_equal "unknown", row["bucket"]
       assert_equal @old, row["repos_synced_at"]
@@ -152,12 +152,12 @@ class ClassificationTest < Minitest::Test
       refute_nil row["classified_at"]
       assert_includes row["signals"], "issues:stale"
     end
-    assert_empty CSV.read(File.join(@directory, "out/bernies.csv"), headers: true)
+    assert_empty CSV.read(File.join(@directory, "custom.db.output/out/bernies.csv"), headers: true)
     collect("repos", { "last_synced_at" => @today, "archived" => true })
     classify
     run_script("report.rb")
     %w[bernies dead].each do |name|
-      row = CSV.read(File.join(@directory, "out/#{name}.csv"), headers: true).first
+      row = CSV.read(File.join(@directory, "custom.db.output/out/#{name}.csv"), headers: true).first
       assert_equal REPOSITORY, row["repository_url"]
       assert_equal @today, row["repos_synced_at"]
       assert_equal @old, row["issues_synced_at"]

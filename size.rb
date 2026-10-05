@@ -7,6 +7,8 @@
 #
 # Usage: ruby size.rb [--refresh] [--all] [--keep] [--ecosystem NAME] [--bucket NAME] [LIMIT]
 
+require_relative "database"
+
 require "json"
 require "sqlite3"
 require "fileutils"
@@ -17,7 +19,7 @@ require "time"
 require "optparse"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
+DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "size")
 BRIEF   = File.join(WORKDIR, "cache", "brief")
 options = {}

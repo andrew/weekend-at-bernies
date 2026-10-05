@@ -5,12 +5,14 @@
 # "ERROR: domain not found" lines that macOS whois appends after real
 # registrar data, misclassifying active domains as available.
 
+require_relative "database"
+
 require "sqlite3"
 require "time"
 require "digest"
 
 WORKDIR     = __dir__
-DB_PATH     = File.join(WORKDIR, "bernies.db")
+DB_PATH     = Bernies.database_path
 WHOIS_CACHE = File.join(WORKDIR, "cache", "emails", "whois")
 
 def reparse(raw)

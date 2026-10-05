@@ -18,7 +18,7 @@ require_relative "lookup_failures"
 
 WORKDIR = __dir__
 DB_PATH = Bernies.database_path
-OUTDIR  = File.join(WORKDIR, "out")
+OUTDIR  = Bernies.output_directory("out")
 FileUtils.mkdir_p(OUTDIR)
 
 db = SQLite3::Database.new(DB_PATH)
@@ -164,7 +164,7 @@ end
 clean_remediation = remediation.map { |r| REMEDIATION_COLS.zip(r.values_at(*REMEDIATION_COLS)).to_h }
 File.write(File.join(OUTDIR, "remediation.json"), JSON.pretty_generate(clean_remediation))
 
-FINDINGS_DIR = File.join(WORKDIR, "findings")
+FINDINGS_DIR = Bernies.output_directory("findings")
 ECO_TO_LANG  = { "rubygems" => "ruby", "cargo" => "rust", "packagist" => "php", "maven" => "java" }
 FileUtils.mkdir_p(FINDINGS_DIR)
 remediation.group_by { |r| r["ecosystem"] }.each do |eco, rows|
@@ -189,9 +189,10 @@ bernies.first(20).each do |r|
 end
 puts
 tagged = remediation.count { |r| r["remediation"] }
-puts "wrote #{remediation.size} non-active (#{tagged} with remediation) -> out/remediation.{csv,json}"
-puts "wrote #{bernies.size} dead+dormant -> out/bernies.csv"
-puts "wrote #{dead.size} dead -> out/dead.csv, #{dormant.size} dormant -> out/dormant.csv"
-puts "wrote #{unpatched.size} unpatched advisories -> out/unpatched.csv"
-puts "wrote out/buckets-by-ecosystem.csv"
-puts "wrote out/lookup-failures.csv"
+puts "wrote #{remediation.size} non-active (#{tagged} with remediation) -> #{OUTDIR}/remediation.{csv,json}"
+puts "wrote #{bernies.size} dead+dormant -> #{OUTDIR}/bernies.csv"
+puts "wrote #{dead.size} dead -> #{OUTDIR}/dead.csv, #{dormant.size} dormant -> #{OUTDIR}/dormant.csv"
+puts "wrote #{unpatched.size} unpatched advisories -> #{OUTDIR}/unpatched.csv"
+puts "wrote #{OUTDIR}/buckets-by-ecosystem.csv"
+puts "wrote #{OUTDIR}/lookup-failures.csv"
+puts "wrote per-ecosystem remediation to #{FINDINGS_DIR}"

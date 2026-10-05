@@ -62,8 +62,23 @@ Use a separate database to restrict enrichment and classification to your list:
     ruby issues.rb
     ruby advisories.rb
     ruby classify.rb
+    ruby owners.rb
+    ruby maintainers.rb
+    ruby orgs.rb
+    ruby emails.rb
+    ruby clone.rb
+    ruby deps.rb
+    ruby dependents.rb
+    ruby size.rb
+    ruby classify.rb
+    ruby situate.rb
+    ruby report.rb
 
-This replaces the `fetch.rb` step. Running `fetch.rb` afterward also imports the critical-package collection. Without `BERNIES_DB`, the importer writes to `bernies.db`. `report.rb` also respects `BERNIES_DB`, defaulting to `bernies.db`; exports are written to the same `out/` and `findings/` paths regardless of the database selected.
+This replaces the `fetch.rb` step. Running `fetch.rb` afterward also imports the critical-package collection. All database commands use `BERNIES_DB`, including the remediation, tagging and domain follow-up scripts. Relative database paths are resolved against the scripts' directory. Run `owners.rb` before the maintainer, organisation and email collectors, and `deps.rb`, `dependents.rb` and `size.rb` before `situate.rb` and the remediation reports.
+
+Custom exports go beside the database: `mydataset.db.output/out/` contains reports and the tag review sheet, and `mydataset.db.output/findings/` contains per-ecosystem CSVs. For example, export with `ruby tag.rb`, then import edits with `ruby tag.rb --import mydataset.db.output/out/tag.csv` while `BERNIES_DB` remains set. Commands print their output paths. Explicit paths passed to `--import` or `--failures` are used as supplied.
+
+With the default `bernies.db`, exports still use the existing `out/` and `findings/` directories. Remote response caches remain shared; owner imports are restricted to the selected dataset, and cached LLM results require matching prompt inputs and model. Unset `BERNIES_DB` to return to the default dataset.
 
 The importer validates all rows before making requests or writing data. Duplicate entries are fetched once. Missing or unavailable packages are reported, valid packages are imported, and the command exits with a nonzero status if any lookup fails. Re-running updates existing entries without deleting packages omitted from the file. Responses are cached under `cache/mydataset`; use `ruby mydataset.rb --refresh ./mydata.txt` to fetch them again.
 
@@ -79,7 +94,7 @@ The importer validates all rows before making requests or writing data. Duplicat
     BERNIES_DB=science-bernies.db ruby classify.rb
     ruby report_science.rb
 
-The collector stores the science rank, score, citations, category and owner metadata, along with any packages published from the repository. The normal enrichment scripts then collect the same repository activity, maintainer response and advisory signals used for the package dataset. `report_science.rb` writes `out/science-projects.csv`, `out/science-bernies.csv` and `out/science-buckets.csv`.
+The collector stores the science rank, score, citations, category and owner metadata, along with any packages published from the repository. The normal enrichment scripts then collect the same repository activity, maintainer response and advisory signals used for the package dataset. With its default `science-bernies.db`, `report_science.rb` writes `out/science-projects.csv`, `out/science-bernies.csv` and `out/science-buckets.csv`. A different `BERNIES_DB` places these files in `<database>.output/out/` beside that database.
 
 The science API does not currently return `science_score` or allow API sorting by it, so cohort selection reads the public projects listing and fetches each selected project from the JSON API. Responses are cached under `cache/science`; remove that directory to collect a new ranking.
 

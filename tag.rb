@@ -9,14 +9,16 @@
 # differ from the db are touched, so partial edits are fine. Blank cells
 # mean "leave as is".
 
+require_relative "database"
+
 require "csv"
 require "sqlite3"
 require "fileutils"
 require "time"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
-OUT     = File.join(WORKDIR, "out")
+DB_PATH = Bernies.database_path
+OUT     = Bernies.output_directory("out")
 ECO     = (i = ARGV.index("--ecosystem")) && ARGV[i + 1]
 IMPORT  = (i = ARGV.index("--import")) && ARGV[i + 1]
 

@@ -12,6 +12,8 @@
 #
 # Usage: ruby deps.rb [--refresh] [--all] [LIMIT]
 
+require_relative "database"
+
 require "sqlite3"
 require "fileutils"
 require "time"
@@ -21,7 +23,7 @@ require "optparse"
 require_relative "http"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
+DB_PATH = Bernies.database_path
 CACHE_V = File.join(WORKDIR, "cache", "versions")
 CACHE_L = File.join(WORKDIR, "cache", "latest")
 CONN    = conn("https://packages.ecosyste.ms")

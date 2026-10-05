@@ -8,6 +8,8 @@
 #
 # Usage: ruby llm.rb [LIMIT] [--all] [--force]
 
+require_relative "database"
+
 require "json"
 require "sqlite3"
 require "fileutils"
@@ -17,7 +19,7 @@ require "time"
 require "thread"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
+DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "llm")
 SIZE    = File.join(WORKDIR, "cache", "size")
 BRIEF   = File.join(WORKDIR, "cache", "brief")
@@ -218,7 +220,7 @@ threads = WORKERS.times.map do
       size   = load_size(p["repository_url"])
       brief  = load_brief(p["repository_url"])
       prompt = build_prompt(p, deps_for[p["purl"]], size, brief)
-      key    = hkey("v#{PROMPT_VERSION}|#{p['purl']}")
+      key    = hkey(JSON.generate([PROMPT_VERSION, MODEL, SCHEMA, p["purl"], prompt]))
       done << [p["purl"], ask(prompt, key)]
     end
   end

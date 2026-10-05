@@ -105,6 +105,15 @@ def write_owner(upsert, host, login, rec)
   true
 end
 
+rows = db.execute(<<~SQL)
+  SELECT host, owner, MIN(repository_url) AS repository_url
+  FROM repos
+  WHERE owner IS NOT NULL AND repository_url IS NOT NULL
+  GROUP BY host, owner
+  ORDER BY (host='github.com') DESC, host, owner
+SQL
+owner_keys = rows.to_h { |r| [[r["host"].to_s.downcase, r["owner"].downcase], [r["host"], r["owner"]]] }
+
 # ---- pass 1: harvest owner_record from cached packages ----
 puts "scanning cache/packages for embedded owner_record..."
 files = REFRESH ? [] : Dir[File.join(PACKAGES_CACHE, "*.json")]
@@ -122,7 +131,9 @@ files.each_with_index do |f, i|
     host = host_from_url(rm.dig("host", "url"))
     login = rec["login"] || rm["owner"]
     next unless host && login
-    key = [host, login]
+    key = owner_keys[[host.downcase, login.downcase]]
+    next unless key
+    host, login = key
     next if seen.include?(key)
     seen.add(key)
     next if db.get_first_value("SELECT 1 FROM owners WHERE host=? AND login=? AND kind IS NOT NULL AND owners_synced_at IS NOT NULL", key)
@@ -139,14 +150,6 @@ synced = db
   .execute("SELECT host, login FROM owners WHERE owners_synced_at IS NOT NULL AND kind IS NOT NULL")
   .map { |r| [r["host"], r["login"]] }
   .to_set
-
-rows = db.execute(<<~SQL)
-  SELECT host, owner, MIN(repository_url) AS repository_url
-  FROM repos
-  WHERE owner IS NOT NULL AND repository_url IS NOT NULL
-  GROUP BY host, owner
-  ORDER BY (host='github.com') DESC, host, owner
-SQL
 
 todo = REFRESH ? rows : rows.reject { |r|
   synced.include?([r["host"], r["owner"]]) && !failures.recorded?("owner", "#{r['host']}/#{r['owner']}")

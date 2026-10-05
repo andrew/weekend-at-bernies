@@ -23,13 +23,15 @@
 #
 # Usage: ruby domain_status.rb [LIMIT]
 
+require_relative "database"
+
 require "sqlite3"
 require "set"
 require "fileutils"
 require_relative "http"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
+DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "emails", "domainr")
 LIMIT   = ARGV[0]&.to_i
 

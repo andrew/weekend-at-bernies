@@ -17,6 +17,8 @@
 #
 # Usage: ruby emails.rb [--refresh] [LIMIT]   (LIMIT applies to step 1 users)
 
+require_relative "database"
+
 require "sqlite3"
 require "set"
 require "json"
@@ -29,7 +31,7 @@ require "optparse"
 require_relative "http"
 
 WORKDIR          = __dir__
-DB_PATH          = File.join(WORKDIR, "bernies.db")
+DB_PATH          = Bernies.database_path
 COMMITTERS_CACHE = File.join(WORKDIR, "cache", "emails", "committers")
 WHOIS_CACHE      = File.join(WORKDIR, "cache", "emails", "whois")
 COMMITS_CONN     = conn("https://commits.ecosyste.ms")

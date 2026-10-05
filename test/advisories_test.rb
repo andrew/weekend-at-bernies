@@ -83,7 +83,7 @@ class AdvisoriesTest < Minitest::Test
     assert_equal 1, @db.get_first_value("SELECT advisories_count FROM repos")
     assert_equal 1 - patched, @db.get_first_value("SELECT unpatched_advisories_count FROM repos")
     run_script("report.rb")
-    rows = CSV.read(File.join(@directory, "out", "unpatched.csv"), headers: true)
+    rows = CSV.read(File.join(@directory, "custom.db.output", "out", "unpatched.csv"), headers: true)
     assert_equal(patched == 1 ? [] : [IDENTIFIER], rows.map { |row| row["identifier"] })
   end
 
@@ -172,7 +172,7 @@ class AdvisoriesTest < Minitest::Test
     assert_equal 0, @db.get_first_value("SELECT advisories_count FROM repos")
     assert_equal 0, @db.get_first_value("SELECT unpatched_advisories_count FROM repos")
     run_script("report.rb")
-    assert_empty CSV.read(File.join(@directory, "out", "unpatched.csv"), headers: true)
+    assert_empty CSV.read(File.join(@directory, "custom.db.output", "out", "unpatched.csv"), headers: true)
 
     output = run_script("advisories.rb")
     assert_includes output, "0 advisory rows, 0 unpatched, 0 repos"

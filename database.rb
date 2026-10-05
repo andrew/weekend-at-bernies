@@ -3,6 +3,13 @@ module Bernies
     File.expand_path(ENV.fetch("BERNIES_DB", default_name), __dir__)
   end
 
+  def self.output_directory(name, default_name = "bernies.db")
+    path = database_path(default_name)
+    default = File.join(__dir__, default_name)
+    root = (path == default || File.identical?(path, default)) ? __dir__ : "#{path}.output"
+    File.join(root, name)
+  end
+
   def self.create_core_tables(db)
     db.execute_batch <<~SQL
       PRAGMA journal_mode=WAL;

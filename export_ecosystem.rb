@@ -4,6 +4,8 @@
 # Usage: ruby export_ecosystem.rb cargo
 # Writes: out/<ecosystem>-bernies.csv
 
+require_relative "database"
+
 require "sqlite3"
 require "csv"
 require "fileutils"
@@ -11,8 +13,8 @@ require "fileutils"
 ECOSYSTEM = ARGV[0] or abort "usage: ruby export_ecosystem.rb <ecosystem>"
 
 WORKDIR = __dir__
-DB_PATH = File.join(WORKDIR, "bernies.db")
-OUTDIR  = File.join(WORKDIR, "out")
+DB_PATH = Bernies.database_path
+OUTDIR  = Bernies.output_directory("out")
 FileUtils.mkdir_p(OUTDIR)
 
 REGISTRY_URL = {

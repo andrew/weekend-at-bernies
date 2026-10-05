@@ -8,6 +8,8 @@
 #
 # Usage: ruby refetch_whois.rb [LIMIT]
 
+require_relative "database"
+
 require "sqlite3"
 require "digest"
 require "open3"
@@ -15,7 +17,7 @@ require "time"
 require "fileutils"
 
 WORKDIR     = __dir__
-DB_PATH     = File.join(WORKDIR, "bernies.db")
+DB_PATH     = Bernies.database_path
 WHOIS_CACHE = File.join(WORKDIR, "cache", "emails", "whois")
 LIMIT       = ARGV[0]&.to_i
 DELAY       = 5

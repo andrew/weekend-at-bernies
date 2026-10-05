@@ -17,6 +17,8 @@
 #
 # Usage: ruby orgs.rb [--refresh] [LIMIT]
 
+require_relative "database"
+
 require "sqlite3"
 require "set"
 require "json"
@@ -26,7 +28,7 @@ require "optparse"
 require_relative "http"
 
 WORKDIR           = __dir__
-DB_PATH           = File.join(WORKDIR, "bernies.db")
+DB_PATH           = Bernies.database_path
 MAINTAINERS_CACHE = File.join(WORKDIR, "cache", "orgs", "maintainers")
 REPOS_CACHE       = File.join(WORKDIR, "cache", "orgs", "repos")
 ISSUES_CONN       = conn("https://issues.ecosyste.ms")

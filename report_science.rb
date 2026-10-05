@@ -11,7 +11,7 @@ require_relative "database"
 
 WORKDIR = __dir__
 DB_PATH = Bernies.database_path("science-bernies.db")
-OUTDIR = File.join(WORKDIR, "out")
+OUTDIR = Bernies.output_directory("out", "science-bernies.db")
 
 FileUtils.mkdir_p(OUTDIR)
 
@@ -85,6 +85,6 @@ CSV.open(File.join(OUTDIR, "science-buckets.csv"), "w") do |csv|
 end
 
 puts
-puts "wrote #{rows.size} projects to out/science-projects.csv"
-puts "wrote #{bernies.size} dead or dormant projects to out/science-bernies.csv"
-puts "wrote out/science-buckets.csv"
+puts "wrote #{rows.size} projects to #{OUTDIR}/science-projects.csv"
+puts "wrote #{bernies.size} dead or dormant projects to #{OUTDIR}/science-bernies.csv"
+puts "wrote #{OUTDIR}/science-buckets.csv"
