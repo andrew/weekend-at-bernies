@@ -14,13 +14,14 @@
 # Scoped to github.com individuals who hold at least one dead/dormant repo
 # in the critical set. Cached under cache/maintainers/{issues,repos}/.
 #
-# Usage: ruby maintainers.rb [LIMIT]
+# Usage: ruby maintainers.rb [--refresh] [LIMIT]
 
 require "sqlite3"
 require "set"
 require "json"
 require "time"
 require "fileutils"
+require "optparse"
 require_relative "http"
 require_relative "database"
 
@@ -30,7 +31,10 @@ ISSUES_CACHE = File.join(WORKDIR, "cache", "maintainers", "issues")
 REPOS_CACHE  = File.join(WORKDIR, "cache", "maintainers", "repos")
 ISSUES_CONN  = conn("https://issues.ecosyste.ms")
 REPOS_CONN   = conn("https://repos.ecosyste.ms")
-LIMIT        = ARGV[0]&.to_i
+options = {}
+OptionParser.new { |parser| parser.on("--refresh") { options[:refresh] = true } }.parse!
+REFRESH = !!options[:refresh]
+LIMIT = ARGV[0]&.to_i
 
 FileUtils.mkdir_p(ISSUES_CACHE)
 FileUtils.mkdir_p(REPOS_CACHE)
@@ -66,7 +70,7 @@ def fetch_author(login)
     ISSUES_CONN,
     "/api/v1/hosts/GitHub/authors/#{login}",
     {},
-    ISSUES_CACHE
+    ISSUES_CACHE, refresh: REFRESH
   )
 end
 
@@ -75,7 +79,7 @@ def fetch_recent_pushes(login)
     REPOS_CONN,
     "/api/v1/hosts/GitHub/owners/#{login}/repositories",
     { sort: "pushed_at", order: "desc", per_page: 100 },
-    REPOS_CACHE
+    REPOS_CACHE, refresh: REFRESH
   )
 end
 
@@ -92,7 +96,7 @@ done = db
   .map { |r| r["login"] }
   .to_set
 
-todo = rows.reject { |l| done.include?(l) }
+todo = REFRESH ? rows : rows.reject { |l| done.include?(l) }
 todo = todo.first(LIMIT) if LIMIT
 puts "#{todo.size} maintainers to fetch (#{done.size} already done)"
 
@@ -106,19 +110,16 @@ upsert = db.prepare <<~SQL
     issues_synced, repos_synced, maintainers_synced_at
   ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
   ON CONFLICT(host, login) DO UPDATE SET
-    issues_count=excluded.issues_count,
-    pull_requests_count=excluded.pull_requests_count,
-    merged_pull_requests_count=excluded.merged_pull_requests_count,
-    maintaining_count=excluded.maintaining_count,
-    active_maintaining_count=excluded.active_maintaining_count,
-    active_maintaining=excluded.active_maintaining,
-    most_recent_push_repo=excluded.most_recent_push_repo,
-    most_recent_push_at=excluded.most_recent_push_at,
-    recently_pushed_30d=excluded.recently_pushed_30d,
-    recently_pushed_365d=excluded.recently_pushed_365d,
+    #{%w[issues_count pull_requests_count merged_pull_requests_count maintaining_count active_maintaining_count active_maintaining].map { |c|
+      "#{c}=CASE WHEN excluded.issues_synced=1 THEN excluded.#{c} ELSE maintainers.#{c} END"
+    }.join(",")},
+    #{%w[most_recent_push_repo most_recent_push_at recently_pushed_30d recently_pushed_365d].map { |c|
+      "#{c}=CASE WHEN excluded.repos_synced=1 THEN excluded.#{c} ELSE maintainers.#{c} END"
+    }.join(",")},
     issues_synced=excluded.issues_synced,
     repos_synced=excluded.repos_synced,
-    maintainers_synced_at=datetime('now')
+    maintainers_synced_at=CASE WHEN excluded.issues_synced=1 OR excluded.repos_synced=1
+      THEN excluded.maintainers_synced_at ELSE maintainers.maintainers_synced_at END
 SQL
 
 now      = Time.now
@@ -135,6 +136,8 @@ issues_hit = repos_hit = both_miss = 0
 todo.each_with_index do |login, i|
   author = fetch_author(login)
   repos  = fetch_recent_pushes(login)
+  author = nil unless author.is_a?(Hash)
+  repos = nil unless repos.is_a?(Array)
 
   am = author && author["active_maintaining"].is_a?(Array) ? author["active_maintaining"] : []
   am_top = am.first(10).map { |r| { repo: r["repository"], count: r["count"] } }

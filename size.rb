@@ -5,7 +5,7 @@
 # for deprecation pointers, then delete the clone. Results cached under
 # cache/size and the brief JSON under cache/brief.
 #
-# Usage: ruby size.rb [LIMIT] [--all] [--keep]
+# Usage: ruby size.rb [--refresh] [--all] [--keep] [--ecosystem NAME] [--bucket NAME] [LIMIT]
 
 require "json"
 require "sqlite3"
@@ -14,16 +14,26 @@ require "digest"
 require "tmpdir"
 require "open3"
 require "time"
+require "optparse"
 
 WORKDIR = __dir__
 DB_PATH = File.join(WORKDIR, "bernies.db")
 CACHE   = File.join(WORKDIR, "cache", "size")
 BRIEF   = File.join(WORKDIR, "cache", "brief")
-LIMIT   = ARGV.grep(/\A\d+\z/).first&.to_i
-ALL     = ARGV.include?("--all")
-KEEP    = ARGV.include?("--keep")
-ECO     = (i = ARGV.index("--ecosystem")) && ARGV[i + 1]
-BUCKET  = (i = ARGV.index("--bucket")) && ARGV[i + 1]
+options = {}
+OptionParser.new do |parser|
+  parser.on("--refresh") { options[:refresh] = true }
+  parser.on("--all") { options[:all] = true }
+  parser.on("--keep") { options[:keep] = true }
+  parser.on("--ecosystem NAME") { |name| options[:ecosystem] = name }
+  parser.on("--bucket NAME") { |name| options[:bucket] = name }
+end.parse!
+REFRESH = !!options[:refresh]
+ALL = !!options[:all]
+KEEP = !!options[:keep]
+ECO = options[:ecosystem]
+BUCKET = options[:bucket]
+LIMIT = ARGV[0]&.to_i
 
 CLONE_HOSTS = %w[github.com gitlab.com codeberg.org gitea.com sr.ht git.sr.ht]
 NATIVE_LANGS = %w[C C++ Objective-C Objective-C++ Assembly Zig]
@@ -109,15 +119,14 @@ end
 
 def measure(url, ecosystems)
   cache = File.join(CACHE, "#{hkey(url)}.json")
-  if File.exist?(cache)
+  if !REFRESH && File.exist?(cache)
     body = File.read(cache)
-    return body == "null" ? nil : JSON.parse(body)
+    return JSON.parse(body) unless body == "null"
   end
 
   result = nil
   Dir.mktmpdir("bernies-size-") do |dir|
     unless clone(url, dir)
-      File.write(cache, "null")
       return nil
     end
 
@@ -127,7 +136,9 @@ def measure(url, ecosystems)
 
     src = source_dir(dir, ecosystems)
     scc_out = run("scc", "--no-cocomo", "--format", "json", src)
-    scc = scc_out ? (JSON.parse(scc_out) rescue []) : []
+    return nil unless scc_out
+    scc = JSON.parse(scc_out)
+    return nil unless scc.is_a?(Array)
 
     code_loc   = scc.sum { |l| l["Code"] || 0 }
     comment    = scc.sum { |l| l["Comment"] || 0 }
@@ -179,7 +190,7 @@ rows = db.execute(<<~SQL)
   SELECT r.repository_url,
          GROUP_CONCAT(DISTINCT p.ecosystem) AS ecosystems
   FROM repos r JOIN packages p ON p.repository_url = r.repository_url
-  WHERE r.size_synced_at IS NULL
+  WHERE #{REFRESH ? "1=1" : "r.size_synced_at IS NULL"}
     AND r.host IN (#{CLONE_HOSTS.map { |h| "'#{h}'" }.join(",")})
     #{bucket_filter}
     #{eco_filter}
@@ -210,7 +221,7 @@ rows.each_with_index do |r, i|
     )
     hit += 1
   else
-    upd.execute(nil, nil, nil, nil, nil, nil, nil, nil, now, url)
+    puts ; puts "miss: #{url}"
     miss += 1
   end
   print "\r[#{i + 1}/#{rows.size}] hit=#{hit} miss=#{miss}"

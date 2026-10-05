@@ -10,13 +10,14 @@
 #
 # Populates the dependencies table and rolls counts up to packages.
 #
-# Usage: ruby deps.rb [LIMIT] [--all]
+# Usage: ruby deps.rb [--refresh] [--all] [LIMIT]
 
 require "sqlite3"
 require "fileutils"
 require "time"
 require "erb"
 require "thread"
+require "optparse"
 require_relative "http"
 
 WORKDIR = __dir__
@@ -24,8 +25,14 @@ DB_PATH = File.join(WORKDIR, "bernies.db")
 CACHE_V = File.join(WORKDIR, "cache", "versions")
 CACHE_L = File.join(WORKDIR, "cache", "latest")
 CONN    = conn("https://packages.ecosyste.ms")
-LIMIT   = ARGV.reject { |a| a.start_with?("--") }.first&.to_i
-ALL     = ARGV.include?("--all")
+options = {}
+OptionParser.new do |parser|
+  parser.on("--refresh") { options[:refresh] = true }
+  parser.on("--all") { options[:all] = true }
+end.parse!
+REFRESH = !!options[:refresh]
+ALL = !!options[:all]
+LIMIT = ARGV[0]&.to_i
 
 FileUtils.mkdir_p(CACHE_V)
 FileUtils.mkdir_p(CACHE_L)
@@ -50,8 +57,8 @@ def enc(s) = ERB::Util.url_encode(s.to_s)
 
 def fetch_version_deps(registry, name, version)
   path = "/api/v1/registries/#{registry}/packages/#{enc(name)}/versions/#{enc(version)}"
-  data = cached_get(CONN, path, {}, CACHE_V)
-  data && data["dependencies"] || []
+  data = cached_get(CONN, path, {}, CACHE_V, refresh: REFRESH)
+  data["dependencies"] if data.is_a?(Hash) && data["dependencies"].is_a?(Array)
 end
 
 LATEST = {}
@@ -60,7 +67,7 @@ def fetch_latest(ecosystem, name)
   key = "#{ecosystem}/#{name}"
   LATEST_MUTEX.synchronize { return LATEST[key] if LATEST.key?(key) }
   reg = ECO_REGISTRY[ecosystem] or return nil
-  data = cached_get(CONN, "/api/v1/registries/#{reg}/packages/#{enc(name)}", {}, CACHE_L)
+  data = cached_get(CONN, "/api/v1/registries/#{reg}/packages/#{enc(name)}", {}, CACHE_L, refresh: REFRESH)
   v = data && data["latest_release_number"]
   LATEST_MUTEX.synchronize { LATEST[key] = v }
   v
@@ -99,13 +106,13 @@ SQL
   db.execute("ALTER TABLE packages ADD COLUMN #{c} #{c.end_with?('_at') ? 'TEXT' : 'INTEGER'}") rescue SQLite3::SQLException
 end
 
-seed_latest_from_db(db)
+seed_latest_from_db(db) unless REFRESH
 
 bucket_filter = ALL ? "" : "AND (r.bucket IS NULL OR r.bucket <> 'active')"
 pkgs = db.execute(<<~SQL)
   SELECT p.purl, p.registry, p.ecosystem, p.name, p.latest_release
   FROM packages p LEFT JOIN repos r ON p.repository_url = r.repository_url
-  WHERE p.latest_release IS NOT NULL AND p.deps_fetched_at IS NULL #{bucket_filter}
+  WHERE p.latest_release IS NOT NULL #{"AND p.deps_fetched_at IS NULL" unless REFRESH} #{bucket_filter}
   ORDER BY p.ecosystem, p.name
   #{"LIMIT #{LIMIT}" if LIMIT}
 SQL
@@ -139,19 +146,28 @@ WORKERS = 8
 threads = WORKERS.times.map do
   Thread.new do
     while (p = queue.pop(true) rescue nil)
-      deps = fetch_version_deps(p["registry"], p["name"], p["latest_release"])
-      rows = []
-      deps.each do |d|
-        next if d["direct"] == false
-        eco = d["ecosystem"]
-        next unless ECO_REGISTRY.key?(eco)
-        latest = fetch_latest(eco, d["package_name"])
-        rmaj   = major_of(d["requirements"])
-        lmaj   = major_of(latest)
-        behind = (rmaj && lmaj) ? [lmaj - rmaj, 0].max : nil
-        rows << [eco, d["package_name"], d["kind"], d["requirements"], latest, rmaj, lmaj, behind]
+      begin
+        deps = fetch_version_deps(p["registry"], p["name"], p["latest_release"])
+        rows = deps && []
+        deps&.each do |d|
+          next if d["direct"] == false
+          eco = d["ecosystem"]
+          next unless ECO_REGISTRY.key?(eco)
+          latest = fetch_latest(eco, d["package_name"])
+          if latest.nil?
+            rows = nil
+            break
+          end
+          rmaj   = major_of(d["requirements"])
+          lmaj   = major_of(latest)
+          behind = (rmaj && lmaj) ? [lmaj - rmaj, 0].max : nil
+          rows << [eco, d["package_name"], d["kind"], d["requirements"], latest, rmaj, lmaj, behind]
+        end
+        done << [p, rows]
+      rescue => e
+        warn "#{p['purl']}: #{e.class}: #{e.message}"
+        done << [p, nil]
       end
-      done << [p, rows]
     end
   end
 end
@@ -159,21 +175,29 @@ end
 processed = 0
 until processed == pkgs.size
   p, rows = done.pop
+  if rows.nil?
+    puts ; puts "miss: #{p['purl']}"
+    processed += 1
+    next
+  end
   rt = rto = dv = dvo = 0
   maxb = nil
-  rows.each do |eco, dep_name, kind, req, latest, rmaj, lmaj, behind|
-    runtime = (kind.to_s.downcase == "runtime")
-    if runtime
-      rt += 1; rto += 1 if behind && behind >= 1
-    else
-      dv += 1; dvo += 1 if behind && behind >= 1
+  db.transaction do
+    db.execute("DELETE FROM dependencies WHERE purl=?", [p["purl"]])
+    rows.each do |eco, dep_name, kind, req, latest, rmaj, lmaj, behind|
+      runtime = (kind.to_s.downcase == "runtime")
+      if runtime
+        rt += 1; rto += 1 if behind && behind >= 1
+      else
+        dv += 1; dvo += 1 if behind && behind >= 1
+      end
+      maxb = behind if behind && (maxb.nil? || behind > maxb)
+      ins.execute(p["purl"], p["ecosystem"], p["name"], eco, dep_name, kind, req, latest, rmaj, lmaj, behind, now)
+      total_deps += 1
+      total_outdated += 1 if behind && behind >= 1
     end
-    maxb = behind if behind && (maxb.nil? || behind > maxb)
-    ins.execute(p["purl"], p["ecosystem"], p["name"], eco, dep_name, kind, req, latest, rmaj, lmaj, behind, now)
-    total_deps += 1
-    total_outdated += 1 if behind && behind >= 1
+    upd.execute(rt, rto, dv, dvo, maxb, now, p["purl"])
   end
-  upd.execute(rt, rto, dv, dvo, maxb, now, p["purl"])
   processed += 1
   print "\r[#{processed}/#{pkgs.size}] deps=#{total_deps} outdated=#{total_outdated}"
 end

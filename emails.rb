@@ -15,7 +15,7 @@
 # can request a password reset and take over the account. This script
 # surfaces the at-risk cohort.
 #
-# Usage: ruby emails.rb [LIMIT]   (LIMIT applies to step 1 users)
+# Usage: ruby emails.rb [--refresh] [LIMIT]   (LIMIT applies to step 1 users)
 
 require "sqlite3"
 require "set"
@@ -25,6 +25,7 @@ require "digest"
 require "resolv"
 require "open3"
 require "fileutils"
+require "optparse"
 require_relative "http"
 
 WORKDIR          = __dir__
@@ -32,7 +33,10 @@ DB_PATH          = File.join(WORKDIR, "bernies.db")
 COMMITTERS_CACHE = File.join(WORKDIR, "cache", "emails", "committers")
 WHOIS_CACHE      = File.join(WORKDIR, "cache", "emails", "whois")
 COMMITS_CONN     = conn("https://commits.ecosyste.ms")
-LIMIT            = ARGV[0]&.to_i
+options = {}
+OptionParser.new { |parser| parser.on("--refresh") { options[:refresh] = true } }.parse!
+REFRESH = !!options[:refresh]
+LIMIT = ARGV[0]&.to_i
 WHOIS_DELAY      = 5
 
 FREE_WEBMAIL = %w[
@@ -88,7 +92,7 @@ def fetch_committer(login)
     COMMITS_CONN,
     "/api/v1/hosts/GitHub/committers/#{login}",
     {},
-    COMMITTERS_CACHE
+    COMMITTERS_CACHE, refresh: REFRESH
   )
 end
 
@@ -103,7 +107,7 @@ def dns_check(domain)
   end
   { resolves: resolves || !mx.empty?, has_mx: !mx.empty?, mx_count: mx.size }
 rescue Resolv::ResolvError, Resolv::ResolvTimeout, IOError
-  { resolves: false, has_mx: false, mx_count: 0 }
+  nil
 end
 
 def parse_whois(raw)
@@ -144,7 +148,7 @@ end
 def whois_check(domain)
   cache_file = File.join(WHOIS_CACHE, "#{Digest::SHA256.hexdigest(domain)[0, 32]}.txt")
   raw =
-    if File.exist?(cache_file)
+    if !REFRESH && File.exist?(cache_file) && !File.read(cache_file).start_with?("ERROR")
       File.read(cache_file)
     else
       sleep WHOIS_DELAY
@@ -153,7 +157,6 @@ def whois_check(domain)
         File.write(cache_file, out)
         out
       else
-        File.write(cache_file, "ERROR\n")
         "ERROR\n"
       end
     end
@@ -177,7 +180,7 @@ done = db
   .map { |r| r["login"] }
   .to_set
 
-todo_users = users.reject { |l| done.include?(l) }
+todo_users = REFRESH ? users : users.reject { |l| done.include?(l) }
 todo_users = todo_users.first(LIMIT) if LIMIT
 puts "step 1: fetch committer emails for #{todo_users.size} users (#{done.size} done)"
 
@@ -185,13 +188,13 @@ ins = db.prepare("INSERT OR IGNORE INTO commit_emails (host, login, email, domai
 hit = miss = no_email = 0
 todo_users.each_with_index do |login, i|
   rec = fetch_committer(login)
-  if rec.nil?
+  if !rec.is_a?(Hash) || !rec["emails"].is_a?(Array)
     miss += 1
   else
     emails = (rec["emails"] || []).map { |e| e.to_s.downcase.strip }.reject(&:empty?).uniq
-    if emails.empty?
-      no_email += 1
-    else
+    no_email += 1 if emails.empty?
+    db.transaction do
+      db.execute("DELETE FROM commit_emails WHERE host=? AND login=?", ["github.com", login])
       emails.each do |e|
         next unless e.include?("@")
         dom = e.split("@", 2).last
@@ -217,7 +220,7 @@ already = db
   .map { |r| r["domain"] }
   .to_set
 
-todo_domains = domains.reject { |d| already.include?(d) }
+todo_domains = REFRESH ? domains : domains.reject { |d| already.include?(d) }
 puts "step 2: classify/check #{todo_domains.size} domains (#{already.size} done)"
 
 upsert = db.prepare <<~SQL
@@ -241,6 +244,10 @@ todo_domains.each_with_index do |domain, i|
   else
     dns   = dns_check(domain)
     whois = whois_check(domain)
+    if dns.nil? || %w[error no_whois_tool].include?(whois[:status])
+      puts ; puts "miss: #{domain}"
+      next
+    end
     upsert.execute(
       domain, kind,
       dns[:resolves] ? 1 : 0, dns[:has_mx] ? 1 : 0, dns[:mx_count],

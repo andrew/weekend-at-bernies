@@ -7,21 +7,29 @@
 #
 # Cached under cache/dependents.
 #
-# Usage: ruby dependents.rb [LIMIT] [--all]
+# Usage: ruby dependents.rb [--refresh] [--all] [--ecosystem NAME] [LIMIT]
 
 require "sqlite3"
 require "fileutils"
 require "time"
 require "erb"
+require "optparse"
 require_relative "http"
 
 WORKDIR = __dir__
 DB_PATH = File.join(WORKDIR, "bernies.db")
 CACHE   = File.join(WORKDIR, "cache", "dependents")
 CONN    = conn("https://packages.ecosyste.ms")
-LIMIT   = ARGV.grep(/\A\d+\z/).first&.to_i
-ALL     = ARGV.include?("--all")
-ECO     = (i = ARGV.index("--ecosystem")) && ARGV[i + 1]
+options = {}
+OptionParser.new do |parser|
+  parser.on("--refresh") { options[:refresh] = true }
+  parser.on("--all") { options[:all] = true }
+  parser.on("--ecosystem NAME") { |name| options[:ecosystem] = name }
+end.parse!
+REFRESH = !!options[:refresh]
+ALL = !!options[:all]
+ECO = options[:ecosystem]
+LIMIT = ARGV[0]&.to_i
 TOP_N   = 20
 
 FileUtils.mkdir_p(CACHE)
@@ -33,7 +41,7 @@ NO_DOWNLOADS = %w[proxy.golang.org repo1.maven.org swiftpackageindex.com]
 def fetch_dependents(registry, name)
   sort = NO_DOWNLOADS.include?(registry) ? "dependent_repos_count" : "downloads"
   path = "/api/v1/registries/#{registry}/packages/#{enc(name)}/dependent_packages"
-  cached_get(CONN, path, { per_page: TOP_N, sort: sort }, CACHE)
+  cached_get(CONN, path, { per_page: TOP_N, sort: sort }, CACHE, refresh: REFRESH)
 end
 
 db = SQLite3::Database.new(DB_PATH)
@@ -65,7 +73,7 @@ eco_filter    = ECO ? "AND p.ecosystem = '#{ECO}'" : ""
 pkgs = db.execute(<<~SQL)
   SELECT p.purl, p.registry, p.ecosystem, p.name, p.downloads, p.dependent_repos
   FROM packages p LEFT JOIN repos r ON p.repository_url = r.repository_url
-  WHERE p.dependents_synced_at IS NULL #{bucket_filter} #{eco_filter}
+  WHERE #{REFRESH ? "1=1" : "p.dependents_synced_at IS NULL"} #{bucket_filter} #{eco_filter}
   ORDER BY p.dependent_packages ASC NULLS LAST
   #{"LIMIT #{LIMIT}" if LIMIT}
 SQL
@@ -91,7 +99,7 @@ now = Time.now.utc.iso8601
 hit = miss = 0
 pkgs.each_with_index do |p, i|
   list = fetch_dependents(p["registry"], p["name"])
-  if list.nil?
+  if !list.is_a?(Array)
     miss += 1
   else
     use_dl = p["downloads"] && p["downloads"] > 0
@@ -104,14 +112,17 @@ pkgs.each_with_index do |p, i|
     top1 = sum > 0 ? vals[0].to_f / sum : nil
     top5 = sum > 0 ? vals.first(5).sum.to_f / sum : nil
     transit = (own && own > 0) ? (sum.to_f / own).round(3) : nil
-    list.each_with_index do |d, rank|
-      ins.execute(
-        p["purl"], rank + 1, d["purl"], d["ecosystem"], d["name"],
-        d["downloads"], d["dependent_repos_count"],
-        (d["description"] || "")[0, 200], now
-      )
+    db.transaction do
+      db.execute("DELETE FROM dependents WHERE purl=?", [p["purl"]])
+      list.each_with_index do |d, rank|
+        ins.execute(
+          p["purl"], rank + 1, d["purl"], d["ecosystem"], d["name"],
+          d["downloads"], d["dependent_repos_count"],
+          (d["description"] || "")[0, 200], now
+        )
+      end
+      upd.execute(top1, top5, list.dig(0, "name"), transit, now, p["purl"])
     end
-    upd.execute(top1, top5, list.dig(0, "name"), transit, now, p["purl"])
     hit += 1
   end
   print "\r[#{i + 1}/#{pkgs.size}] hit=#{hit} miss=#{miss}"

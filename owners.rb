@@ -5,7 +5,7 @@
 # repo_metadata.owner_record for free, then falls back to a per-owner fetch
 # from repos.ecosyste.ms for whatever is left. Cached under cache/owners.
 #
-# Usage: ruby owners.rb [--failures FILE] [LIMIT]   (LIMIT applies to the API fallback only)
+# Usage: ruby owners.rb [--refresh] [--failures FILE] [LIMIT]
 
 require "sqlite3"
 require "set"
@@ -25,8 +25,10 @@ OWNERS_CACHE   = File.join(WORKDIR, "cache", "owners")
 CONN           = conn("https://repos.ecosyste.ms")
 options = {}
 OptionParser.new do |parser|
+  parser.on("--refresh") { options[:refresh] = true }
   parser.on("--failures FILE") { |path| options[:failures] = path }
 end.parse!
+REFRESH = !!options[:refresh]
 LIMIT = ARGV[0]&.to_i
 
 FileUtils.mkdir_p(OWNERS_CACHE)
@@ -105,7 +107,7 @@ end
 
 # ---- pass 1: harvest owner_record from cached packages ----
 puts "scanning cache/packages for embedded owner_record..."
-files = Dir[File.join(PACKAGES_CACHE, "*.json")]
+files = REFRESH ? [] : Dir[File.join(PACKAGES_CACHE, "*.json")]
 seen = Set.new
 hit  = 0
 files.each_with_index do |f, i|
@@ -123,6 +125,7 @@ files.each_with_index do |f, i|
     key = [host, login]
     next if seen.include?(key)
     seen.add(key)
+    next if db.get_first_value("SELECT 1 FROM owners WHERE host=? AND login=? AND kind IS NOT NULL AND owners_synced_at IS NOT NULL", key)
     write_owner(upsert, host, login, rec)
     failures.clear("owner", "#{host}/#{login}")
     hit += 1
@@ -145,7 +148,9 @@ rows = db.execute(<<~SQL)
   ORDER BY (host='github.com') DESC, host, owner
 SQL
 
-todo = rows.reject { |r| synced.include?([r["host"], r["owner"]]) }
+todo = REFRESH ? rows : rows.reject { |r|
+  synced.include?([r["host"], r["owner"]]) && !failures.recorded?("owner", "#{r['host']}/#{r['owner']}")
+}
 todo = todo.first(LIMIT) if LIMIT
 
 puts "API fallback: #{todo.size} owners not in cache (#{synced.size} already filled)"
@@ -153,7 +158,7 @@ puts "API fallback: #{todo.size} owners not in cache (#{synced.size} already fil
 api_hit = api_miss = norepo = 0
 todo.each_with_index do |r, i|
   host, login = r["host"], r["owner"]
-  retrying = failures.recorded?("owner", "#{host}/#{login}")
+  retrying = REFRESH || failures.recorded?("owner", "#{host}/#{login}")
   result = cached_response(CONN, "/api/v1/repositories/lookup", { url: r["repository_url"] }, REPOS_CACHE, refresh: retrying)
   repo = result.data
   if !repo.is_a?(Hash) || repo["owner_url"].to_s.empty?

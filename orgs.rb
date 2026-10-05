@@ -15,13 +15,14 @@
 #
 # Cached under cache/orgs/{maintainers,repos}/.
 #
-# Usage: ruby orgs.rb [LIMIT]
+# Usage: ruby orgs.rb [--refresh] [LIMIT]
 
 require "sqlite3"
 require "set"
 require "json"
 require "time"
 require "fileutils"
+require "optparse"
 require_relative "http"
 
 WORKDIR           = __dir__
@@ -30,7 +31,10 @@ MAINTAINERS_CACHE = File.join(WORKDIR, "cache", "orgs", "maintainers")
 REPOS_CACHE       = File.join(WORKDIR, "cache", "orgs", "repos")
 ISSUES_CONN       = conn("https://issues.ecosyste.ms")
 REPOS_CONN        = conn("https://repos.ecosyste.ms")
-LIMIT             = ARGV[0]&.to_i
+options = {}
+OptionParser.new { |parser| parser.on("--refresh") { options[:refresh] = true } }.parse!
+REFRESH = !!options[:refresh]
+LIMIT = ARGV[0]&.to_i
 
 # Known bot accounts that show up as "maintainers" in issue activity.
 # This list is conservative; the regex catches the long tail.
@@ -87,7 +91,7 @@ def fetch_org_maintainers(login)
     ISSUES_CONN,
     "/api/v1/hosts/GitHub/owners/#{login}/maintainers",
     {},
-    MAINTAINERS_CACHE
+    MAINTAINERS_CACHE, refresh: REFRESH
   )
 end
 
@@ -96,7 +100,7 @@ def fetch_org_pushes(login)
     REPOS_CONN,
     "/api/v1/hosts/GitHub/owners/#{login}/repositories",
     { sort: "pushed_at", order: "desc", per_page: 100 },
-    REPOS_CACHE
+    REPOS_CACHE, refresh: REFRESH
   )
 end
 
@@ -113,7 +117,7 @@ done = db
   .map { |r| r["login"] }
   .to_set
 
-todo = rows.reject { |l| done.include?(l) }
+todo = REFRESH ? rows : rows.reject { |l| done.include?(l) }
 todo = todo.first(LIMIT) if LIMIT
 puts "#{todo.size} orgs to fetch (#{done.size} already done)"
 
@@ -128,22 +132,16 @@ upsert = db.prepare <<~SQL
     maintainers_synced, repos_synced, org_synced_at
   ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
   ON CONFLICT(host, login) DO UPDATE SET
-    maintainer_count=excluded.maintainer_count,
-    active_maintainer_count=excluded.active_maintainer_count,
-    human_active_maintainer_count=excluded.human_active_maintainer_count,
-    top_maintainer=excluded.top_maintainer,
-    top_maintainer_count=excluded.top_maintainer_count,
-    top_is_bot=excluded.top_is_bot,
-    top1_share=excluded.top1_share,
-    top_human_maintainer=excluded.top_human_maintainer,
-    top_human_count=excluded.top_human_count,
-    most_recent_push_repo=excluded.most_recent_push_repo,
-    most_recent_push_at=excluded.most_recent_push_at,
-    recently_pushed_30d=excluded.recently_pushed_30d,
-    recently_pushed_365d=excluded.recently_pushed_365d,
+    #{%w[maintainer_count active_maintainer_count human_active_maintainer_count top_maintainer top_maintainer_count top_is_bot top1_share top_human_maintainer top_human_count].map { |c|
+      "#{c}=CASE WHEN excluded.maintainers_synced=1 THEN excluded.#{c} ELSE org_activity.#{c} END"
+    }.join(",")},
+    #{%w[most_recent_push_repo most_recent_push_at recently_pushed_30d recently_pushed_365d].map { |c|
+      "#{c}=CASE WHEN excluded.repos_synced=1 THEN excluded.#{c} ELSE org_activity.#{c} END"
+    }.join(",")},
     maintainers_synced=excluded.maintainers_synced,
     repos_synced=excluded.repos_synced,
-    org_synced_at=datetime('now')
+    org_synced_at=CASE WHEN excluded.maintainers_synced=1 OR excluded.repos_synced=1
+      THEN excluded.org_synced_at ELSE org_activity.org_synced_at END
 SQL
 
 now      = Time.now
@@ -160,6 +158,8 @@ mh = ph = both_miss = 0
 todo.each_with_index do |login, i|
   mdata = fetch_org_maintainers(login)
   pdata = fetch_org_pushes(login)
+  mdata = nil unless mdata.is_a?(Hash)
+  pdata = nil unless pdata.is_a?(Array)
 
   m_all    = mdata && mdata["maintainers"].is_a?(Array) ? mdata["maintainers"] : []
   m_active = mdata && mdata["active_maintainers"].is_a?(Array) ? mdata["active_maintainers"] : []

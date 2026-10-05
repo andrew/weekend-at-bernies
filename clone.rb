@@ -2,13 +2,12 @@
 # Ground-truth last commit on the default branch via a shallow clone.
 # pushed_at from the API is any-branch and can be stale; this is the number
 # we actually trust for "time since last commit". Results cached under
-# cache/clone so each repo is only cloned once.
+# cache/clone until --refresh is requested.
 #
 # Clones are --depth 1 --bare --filter=blob:none into a temp dir and removed
 # immediately after reading the commit date.
 #
-# Usage: ruby clone.rb [LIMIT]
-#        ruby clone.rb --all        # ignore LIMIT, do every uncached repo
+# Usage: ruby clone.rb [--refresh] [--all] [LIMIT]
 
 require "json"
 require "sqlite3"
@@ -17,13 +16,20 @@ require "digest"
 require "tmpdir"
 require "open3"
 require "time"
+require "optparse"
 require_relative "database"
 
 WORKDIR = __dir__
 DB_PATH = Bernies.database_path
 CACHE   = File.join(WORKDIR, "cache", "clone")
-LIMIT   = ARGV.reject { |a| a.start_with?("--") }.first&.to_i
-ALL     = ARGV.include?("--all")
+options = {}
+OptionParser.new do |parser|
+  parser.on("--refresh") { options[:refresh] = true }
+  parser.on("--all") { options[:all] = true }
+end.parse!
+REFRESH = !!options[:refresh]
+ALL = !!options[:all]
+LIMIT = ARGV[0]&.to_i
 
 CLONE_HOSTS = %w[github.com gitlab.com codeberg.org gitea.com sr.ht git.sr.ht]
 
@@ -35,9 +41,9 @@ end
 
 def shallow_clone(url)
   path = cache_path(url)
-  if File.exist?(path)
+  if !REFRESH && File.exist?(path)
     body = File.read(path)
-    return body == "null" ? nil : JSON.parse(body)
+    return JSON.parse(body) unless body == "null"
   end
 
   result = nil
@@ -57,7 +63,7 @@ def shallow_clone(url)
     end
   end
 
-  File.write(path, result ? JSON.generate(result) : "null")
+  File.write(path, JSON.generate(result)) if result
   result
 rescue => e
   warn "  #{url}: #{e.class}: #{e.message}"
@@ -72,7 +78,7 @@ db.results_as_hash = true
 # moves the needle first.
 urls = db.execute(<<~SQL).map { |r| r["repository_url"] }
   SELECT repository_url FROM repos
-  WHERE cloned_at IS NULL
+  WHERE #{REFRESH ? "1=1" : "cloned_at IS NULL"}
     AND host IN (#{CLONE_HOSTS.map { |h| "'#{h}'" }.join(",")})
     #{ALL ? "" : "AND (bucket IS NULL OR bucket <> 'active')"}
   ORDER BY (bucket IN ('dead','unknown','dormant')) DESC,
@@ -91,8 +97,7 @@ urls.each_with_index do |url, i|
     upd.execute(r["last_commit_at"], r["last_commit_sha"], now, url)
     hit += 1
   else
-    upd.execute(nil, nil, now, url)
-    puts ; puts "miss: #{r}, #{url}"
+    puts ; puts "miss: #{url}"
     miss += 1
   end
   print "\r[#{i + 1}/#{urls.size}] hit=#{hit} miss=#{miss}"
