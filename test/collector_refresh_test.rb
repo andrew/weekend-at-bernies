@@ -212,6 +212,23 @@ class CollectorRefreshTest < Minitest::Test
     assert_equal before, repo
   end
 
+  def test_clone_failure_is_exported_and_retried_without_cache_until_it_succeeds
+    csv_path = File.join(@directory, "out", "clone-failures.csv")
+    run_script("clone", [], [], commands: { "last_commit_at" => @old })
+    output = run_script("clone", ["--refresh", "--failures", csv_path, "1"], [], commands: { "clone_failed" => true })
+    assert_includes output, "miss: repository #{@urls[0]}: clone_failed"
+    rows = CSV.read(csv_path, headers: true)
+    assert_equal [["clone", @urls[0], "clone_failed", "pkg:gem/alpha"]], rows.map { |row| row.values_at("collector", "identifier", "reason", "packages") }
+    assert_equal @old, repo["last_commit_at"]
+
+    File.write(@commands, "")
+    run_script("clone", ["--failures", csv_path], [], commands: { "last_commit_at" => @today })
+    assert_equal 1, File.readlines(@commands).count { |line| line.include?("clone") }
+    assert_equal @today, repo["last_commit_at"]
+    assert_empty CSV.read(csv_path, headers: true)
+    assert_includes run_script("clone"), "0 repos to shallow-clone"
+  end
+
   def test_size_refresh_replaces_measurements_but_retains_them_when_clone_or_scc_fails
     run_script("size", [], [], commands: { "code_loc" => 10 })
     assert_includes run_script("size"), "0 repos to size"

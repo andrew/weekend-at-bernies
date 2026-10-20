@@ -7,7 +7,7 @@
 # Clones are --depth 1 --bare --filter=blob:none into a temp dir and removed
 # immediately after reading the commit date.
 #
-# Usage: ruby clone.rb [--refresh] [--all] [LIMIT]
+# Usage: ruby clone.rb [--refresh] [--all] [--failures FILE] [LIMIT]
 
 require "json"
 require "sqlite3"
@@ -18,6 +18,7 @@ require "open3"
 require "time"
 require "optparse"
 require_relative "database"
+require_relative "lookup_failures"
 
 WORKDIR = __dir__
 DB_PATH = Bernies.database_path
@@ -26,12 +27,14 @@ options = {}
 OptionParser.new do |parser|
   parser.on("--refresh") { options[:refresh] = true }
   parser.on("--all") { options[:all] = true }
+  parser.on("--failures FILE") { |path| options[:failures] = path }
 end.parse!
 REFRESH = !!options[:refresh]
 ALL = !!options[:all]
 LIMIT = ARGV[0]&.to_i
 
 CLONE_HOSTS = %w[github.com gitlab.com codeberg.org gitea.com sr.ht git.sr.ht]
+CloneFailure = Struct.new(:url, :status, :host_status, :resolved_url, :reason, keyword_init: true)
 
 FileUtils.mkdir_p(CACHE)
 
@@ -39,9 +42,9 @@ def cache_path(url)
   File.join(CACHE, "#{Digest::SHA256.hexdigest(url)[0, 32]}.json")
 end
 
-def shallow_clone(url)
+def shallow_clone(url, refresh: REFRESH)
   path = cache_path(url)
-  if !REFRESH && File.exist?(path)
+  if !refresh && File.exist?(path)
     body = File.read(path)
     return JSON.parse(body) unless body == "null"
   end
@@ -63,22 +66,26 @@ def shallow_clone(url)
     end
   end
 
-  File.write(path, JSON.generate(result)) if result
+  return CloneFailure.new(url: url, reason: "clone_failed") unless result
+
+  File.write(path, JSON.generate(result))
   result
 rescue => e
   warn "  #{url}: #{e.class}: #{e.message}"
-  nil
+  CloneFailure.new(url: url, reason: "clone_error")
 end
 
 db = SQLite3::Database.new(DB_PATH)
 db.busy_timeout = 5000
 db.results_as_hash = true
+failures = Bernies::LookupFailures.new(db, "clone")
 
 # Prioritise repos that look stale or unclassified so the expensive step
 # moves the needle first.
 urls = db.execute(<<~SQL).map { |r| r["repository_url"] }
   SELECT repository_url FROM repos
-  WHERE #{REFRESH ? "1=1" : "cloned_at IS NULL"}
+  WHERE #{REFRESH ? "1=1" : "(cloned_at IS NULL OR EXISTS (SELECT 1 FROM lookup_failures f " \
+    "WHERE f.collector='clone' AND f.kind='repository' AND f.identifier=repos.repository_url))"}
     AND host IN (#{CLONE_HOSTS.map { |h| "'#{h}'" }.join(",")})
     #{ALL ? "" : "AND (bucket IS NULL OR bucket <> 'active')"}
   ORDER BY (bucket IN ('dead','unknown','dormant')) DESC,
@@ -92,12 +99,13 @@ upd = db.prepare("UPDATE repos SET last_commit_at=?, last_commit_sha=?, cloned_a
 now = Time.now.utc.iso8601
 hit = miss = 0
 urls.each_with_index do |url, i|
-  r = shallow_clone(url)
-  if r
+  r = shallow_clone(url, refresh: REFRESH || failures.recorded?("repository", url))
+  if r.is_a?(Hash)
     upd.execute(r["last_commit_at"], r["last_commit_sha"], now, url)
+    failures.clear("repository", url)
     hit += 1
   else
-    puts ; puts "miss: #{url}"
+    puts ; puts "miss: #{failures.record('repository', url, r, repository_url: url)}"
     miss += 1
   end
   print "\r[#{i + 1}/#{urls.size}] hit=#{hit} miss=#{miss}"
@@ -105,3 +113,4 @@ end
 upd.close
 puts
 puts "cloned #{hit}, failed #{miss}"
+Bernies::LookupFailures.export(db, options[:failures], collector: "clone") if options[:failures]
