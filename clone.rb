@@ -105,7 +105,8 @@ urls.each_with_index do |url, i|
     failures.clear("repository", url)
     hit += 1
   else
-    puts ; puts "miss: #{failures.record('repository', url, r, repository_url: url)}"
+    failures.record("repository", url, r, repository_url: url)
+    puts ; puts "miss: #{url}: #{r.reason}"
     miss += 1
   end
   print "\r[#{i + 1}/#{urls.size}] hit=#{hit} miss=#{miss}"

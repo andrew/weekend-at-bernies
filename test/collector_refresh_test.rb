@@ -216,7 +216,7 @@ class CollectorRefreshTest < Minitest::Test
     csv_path = File.join(@directory, "out", "clone-failures.csv")
     run_script("clone", [], [], commands: { "last_commit_at" => @old })
     output = run_script("clone", ["--refresh", "--failures", csv_path, "1"], [], commands: { "clone_failed" => true })
-    assert_includes output, "miss: repository #{@urls[0]}: clone_failed"
+    assert_includes output, "miss: #{@urls[0]}: clone_failed\n"
     rows = CSV.read(csv_path, headers: true)
     assert_equal [["clone", @urls[0], "clone_failed", "pkg:gem/alpha"]], rows.map { |row| row.values_at("collector", "identifier", "reason", "packages") }
     assert_equal @old, repo["last_commit_at"]
