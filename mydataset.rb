@@ -64,6 +64,7 @@ begin
     imported += 1
     puts "imported #{name}"
   end
+  writer.prune_repositories
 ensure
   Bernies::LookupFailures.export(db, options[:failures], collector: "mydataset") if options[:failures]
   writer.close

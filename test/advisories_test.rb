@@ -187,4 +187,69 @@ class AdvisoriesTest < Minitest::Test
     assert_equal 0, @db.get_first_value("SELECT advisories_count FROM repos")
     assert_includes output, "0 advisory rows, 0 unpatched, 0 repos"
   end
+
+  def test_successful_refresh_removes_advisories_absent_from_the_response
+    data = advisory
+    data["packages"].first["versions"] = []
+    import(data)
+    url = "https://advisories.ecosyste.ms/api/v1/advisories?ecosystem=rubygems&package_name=devise-two-factor&per_page=100"
+    run_script("advisories.rb", "--refresh", stubs: [["get", url, 200, {}, "[]"]])
+    assert_empty @db.execute("SELECT * FROM advisories")
+    assert_equal 0, @db.get_first_value("SELECT unpatched_advisories_count FROM repos")
+    run_script("report.rb")
+    assert_empty CSV.read(File.join(@directory, "custom.db.output/out/unpatched.csv"), headers: true)
+  end
+
+  def test_cached_advisories_for_another_package_or_ecosystem_are_not_imported
+    import(advisory)
+    data = advisory
+    data["packages"] = [
+      { "ecosystem" => "npm", "package_name" => "devise-two-factor", "versions" => [] },
+      { "ecosystem" => "rubygems", "package_name" => "another-gem", "versions" => [] }
+    ]
+    import(data)
+    assert_empty @db.execute("SELECT * FROM advisories")
+    assert_equal 0, @db.get_first_value("SELECT advisories_count FROM repos")
+  end
+
+  def test_failed_or_invalid_responses_preserve_saved_advisories
+    import(advisory)
+    before = @db.execute("SELECT * FROM advisories")
+    url = "https://advisories.ecosyste.ms/api/v1/advisories?ecosystem=rubygems&package_name=devise-two-factor&per_page=100"
+    [[404, "null"], [200, '{"error":"unavailable"}'], [200, '[{"identifiers":["incomplete"]}]']].each do |status, body|
+      output = run_script("advisories.rb", "--refresh", stubs: [["get", url, status, {}, body]])
+      assert_includes output, "preserving saved advisories"
+      assert_equal before, @db.execute("SELECT * FROM advisories")
+    end
+  end
+
+  def test_refresh_collects_all_pages_and_preserves_data_if_a_later_page_fails
+    import(advisory)
+    first_page = 100.times.map { |i| advisory.merge("identifiers" => ["advisory-#{i}"]) }
+    last_page = [advisory.merge("identifiers" => ["last-page"])]
+    url = "https://advisories.ecosyste.ms/api/v1/advisories?ecosystem=rubygems&package_name=devise-two-factor&per_page=100"
+    run_script("advisories.rb", "--refresh", stubs: [
+      ["get", url, 200, {}, JSON.generate(first_page)],
+      ["get", "#{url}&page=2", 200, {}, JSON.generate(last_page)]
+    ])
+    assert_equal 101, @db.get_first_value("SELECT COUNT(*) FROM advisories")
+    assert_equal 1, @db.get_first_value("SELECT COUNT(*) FROM advisories WHERE identifier='last-page'")
+    run_script("advisories.rb")
+    assert_equal 101, @db.get_first_value("SELECT COUNT(*) FROM advisories")
+    before = @db.execute("SELECT * FROM advisories")
+    run_script("advisories.rb", "--refresh", stubs: [
+      ["get", url, 200, {}, JSON.generate(first_page)],
+      ["get", "#{url}&page=2", 404, {}, "null"]
+    ])
+    assert_equal before, @db.execute("SELECT * FROM advisories")
+  end
+
+  def test_refresh_limit_preserves_advisories_for_unselected_packages
+    import(advisory)
+    @db.execute("INSERT INTO packages (purl,registry,ecosystem,name,fetched_at) VALUES ('pkg:gem/zzz','rubygems.org','rubygems','zzz','2026-10-21')")
+    @db.execute("INSERT INTO advisories (purl,ecosystem,package_name,identifier,patched,fetched_at) VALUES ('pkg:gem/zzz','rubygems','zzz','unselected',0,'2026-10-21')")
+    url = "https://advisories.ecosyste.ms/api/v1/advisories?ecosystem=rubygems&package_name=devise-two-factor&per_page=100"
+    run_script("advisories.rb", "--refresh", "1", stubs: [["get", url, 200, {}, "[]"]])
+    assert_equal ["unselected"], @db.execute("SELECT identifier FROM advisories").map { |r| r["identifier"] }
+  end
 end

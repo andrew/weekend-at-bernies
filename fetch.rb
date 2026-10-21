@@ -88,6 +88,7 @@ rescue => e
   warn "\n#{registry}: #{e.class}: #{e.message}"
 end
 
+writer.prune_repositories
 writer.close
 
 n = db.get_first_value("SELECT COUNT(*) FROM packages")

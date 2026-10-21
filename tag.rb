@@ -70,15 +70,23 @@ if IMPORT
 end
 
 eco_filter = ECO ? "AND p.ecosystem = '#{ECO}'" : ""
+unpatched = if db.get_first_value("SELECT 1 FROM sqlite_master WHERE type='table' AND name='advisories'")
+  "(SELECT COUNT(*) FROM advisories a WHERE a.purl=p.purl AND a.patched=0 AND a.withdrawn_at IS NULL)"
+else
+  "0"
+end
 rows = db.execute(<<~SQL)
-  SELECT p.purl, p.name, p.ecosystem, r.bucket,
+  SELECT p.purl, p.name, p.ecosystem,
+         CASE WHEN NULLIF(p.repository_url,'') IS NULL THEN 'unknown' ELSE r.bucket END AS bucket,
          p.dependent_repos, p.dependent_packages, p.top1_dependent,
-         r.code_loc, r.complexity, r.has_native, r.unpatched_advisories_count,
+         r.code_loc, r.complexity, r.has_native,
+         CASE WHEN NULLIF(p.repository_url,'') IS NULL THEN #{unpatched} ELSE r.unpatched_advisories_count END AS unpatched_advisories_count,
          p.dead_transitive_count, p.situation, p.eol_direct, p.remediation,
          p.alternative_purl, p.remediation_notes, p.remediation_source,
-         p.llm_confidence, p.repository_url
+         p.llm_confidence, p.repository_url,
+         CASE WHEN NULLIF(p.repository_url,'') IS NULL THEN 'repository:missing' ELSE r.signals END AS signals
   FROM packages p LEFT JOIN repos r ON r.repository_url = p.repository_url
-  WHERE r.bucket IN ('dead','dormant','unknown') #{eco_filter}
+  WHERE (r.bucket IN ('dead','dormant','unknown') OR NULLIF(p.repository_url,'') IS NULL) #{eco_filter}
   ORDER BY p.dependent_repos DESC
 SQL
 
@@ -88,7 +96,7 @@ CSV.open(path, "w") do |csv|
     purl name ecosystem bucket dependent_repos dependent_packages top1_dependent
     code_loc complexity has_native unpatched_advisories dead_transitive_count
     situation eol_direct remediation alternative_purl remediation_notes
-    remediation_source llm_confidence repository_url
+    remediation_source llm_confidence repository_url signals
   ]
   rows.each do |r|
     csv << [
@@ -97,7 +105,7 @@ CSV.open(path, "w") do |csv|
       r["code_loc"], r["complexity"], r["has_native"], r["unpatched_advisories_count"],
       r["dead_transitive_count"], r["situation"], r["eol_direct"], r["remediation"],
       r["alternative_purl"], r["remediation_notes"], r["remediation_source"],
-      r["llm_confidence"]&.round(2), r["repository_url"]
+      r["llm_confidence"]&.round(2), r["repository_url"], r["signals"]
     ]
   end
 end

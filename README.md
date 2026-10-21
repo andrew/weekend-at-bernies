@@ -38,6 +38,8 @@ After collecting fresh data, rerun `classify.rb`, `situate.rb` and `report.rb` t
 
 Package imports preserve repository fields once `repos.rb` has saved a source sync date. Refresh those fields through `repos.rb --refresh`; importing packages again updates package fields without replacing directly collected repository data.
 
+After package imports, repositories with no remaining package or science-project references are removed, along with obsolete lookup failures. Advisory repository links follow the package's current repository URL. Shared repositories and repositories selected as science projects are retained.
+
 `mydataset.rb`, `repos.rb`, `owners.rb` and `clone.rb` save unresolved lookups in the selected database, with the package, repository or owner identity, endpoint, HTTP status and failure reason. Repository failures also include the GitHub status when checked. A later successful lookup clears its entry. Failed responses are not cached, and reruns retry recorded failures even when older metadata is present; legacy `null` cache entries are fetched again to establish their status.
 
 Pass `--failures FILE` to any of those four commands to export its unresolved lookups as CSV, for example `ruby repos.rb --failures out/repo-failures.csv`. The file is replaced on each export. `report.rb` writes all recorded failures to `out/lookup-failures.csv`, including package names associated with a failed repository. `repository_service_miss` means GitHub returned a repository page while the repository service returned 404; `repository_not_found` means both returned 404. A 404 can also mean a private or otherwise unavailable resource. Rate limits, server errors and timeouts have separate reasons, and unknown HTTP statuses remain blank.
@@ -107,6 +109,8 @@ The science API does not currently return `science_score` or allow API sorting b
 
 `dead` is deliberately a hard claim: it requires evidence that someone knocked and nobody answered. Zero commits is never sufficient on its own; a finished package with no commits in five years whose author would still merge a security fix is dormant, not dead. Thresholds live at the top of `classify.rb` and the `signals` column on each repo records the raw inputs so cutoffs can be argued over with `SELECT` rather than re-collection.
 
+Packages without a repository URL appear in remediation, per-ecosystem findings and tag exports as `unknown`, with `repository:missing` in `signals`. Their unpatched advisory counts use package data, since no repository is available to aggregate them.
+
 Archive status and rolling commit and issue counts support classification only when their source sync date is at most 365 days old. Missing, invalid or future sync dates also exclude those observations. The saved values remain available, and `signals` identifies excluded sources with entries such as `issues:stale` or `commits:missing`. Dated releases, pushes and individual commits still use the existing one-year activity window; without usable evidence, the result is `unknown`. Refreshing a response does not make its contents current if the service still returns an old sync date.
 
 The main, per-bucket and remediation reports include repository, commit and issue sync dates alongside `classified_at`. Remediation exports also include `signals`, so an `unknown` result can be checked against missing or stale observations.
@@ -164,6 +168,8 @@ Some queries:
   * `out/tag.csv`: review sheet from `tag.rb`; edit and reimport.
   * `out/lookup-failures.csv`: unresolved lookups across the import, repository, owner and clone collectors.
   * `out/<ecosystem>-bernies.csv`: per-ecosystem dead+dormant export from `export_ecosystem.rb`.
+
+Advisory collection reads every page before reconciling a package's saved advisories. Successful responses remove obsolete associations and exclude advisories belonging to other packages. Failed or invalid responses preserve saved data. Use `ruby advisories.rb --refresh` to fetch corrected upstream data, then rerun classification and reports.
 
 ## First full run (Apr 2026)
 

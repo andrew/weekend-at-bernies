@@ -233,4 +233,51 @@ class PackageImportTest < Minitest::Test
     run_script("fetch.rb", ["rubygems.org"])
     assert_equal 999, db.get_first_value("SELECT downloads FROM packages WHERE name='spina'")
   end
+
+  def test_repository_moves_remove_unreferenced_repositories_and_failures
+    File.write(@input, "pkg:gem,spina\n")
+    run_script("mydataset.rb", [@input], [response("spina")])
+    old_url = db.get_first_value("SELECT repository_url FROM packages")
+    db.execute("INSERT INTO lookup_failures (collector,kind,identifier,repository_url,reason,checked_at) VALUES ('repos','repository',?,?, 'not_found','2026-10-01')", [old_url, old_url])
+    db.execute("INSERT INTO lookup_failures (collector,kind,identifier,repository_url,reason,checked_at) VALUES ('owners','owner','github.com/spinacms',?,'not_found','2026-10-01')", [old_url])
+    new_url = "https://github.com/new-owner/spina"
+    run_script("mydataset.rb", ["--refresh", @input], [response("spina", package(repository_url: new_url))])
+    assert_equal [new_url], db.execute("SELECT repository_url FROM repos").map { |r| r["repository_url"] }
+    assert_empty db.execute("SELECT * FROM lookup_failures")
+
+    db.execute("INSERT INTO repos (repository_url,host,owner) VALUES (?,'github.com','spinacms')", [old_url])
+    run_script("mydataset.rb", [@input])
+    assert_equal [new_url], db.execute("SELECT repository_url FROM repos").map { |r| r["repository_url"] }
+    lookup = "https://repos.ecosyste.ms/api/v1/repositories/lookup?#{URI.encode_www_form(url: new_url)}"
+    assert_includes run_script("repos.rb", [], [[lookup, 200, {}, '{"stargazers_count":200}']]), "1 repos to refresh"
+  end
+
+  def test_repository_cleanup_preserves_shared_and_science_repositories
+    File.write(@input, "pkg:gem,spina\npkg:gem,katello\n")
+    run_script("mydataset.rb", [@input], [response("spina"), response("katello")])
+    old_url = db.get_first_value("SELECT repository_url FROM packages")
+    db.execute("CREATE TABLE science_projects (repository_url TEXT)")
+    science_url = "https://github.com/science/research"
+    db.execute("INSERT INTO science_projects VALUES (?)", [science_url])
+    db.execute("INSERT INTO repos (repository_url) VALUES (?)", [science_url])
+    File.write(@input, "pkg:gem,spina\n")
+    run_script("mydataset.rb", ["--refresh", @input], [response("spina", package(repository_url: nil))])
+    assert_equal [old_url, science_url].sort, db.execute("SELECT repository_url FROM repos").map { |r| r["repository_url"] }.sort
+    assert_equal old_url, db.get_first_value("SELECT repository_url FROM packages WHERE name='katello'")
+  end
+
+  def test_critical_import_updates_advisory_links_and_retains_failures_for_a_current_owner
+    File.write(@input, "pkg:gem,spina\n")
+    run_script("mydataset.rb", [@input], [response("spina")])
+    old_url = db.get_first_value("SELECT repository_url FROM packages")
+    db.execute("CREATE TABLE advisories (purl TEXT, repository_url TEXT)")
+    db.execute("INSERT INTO advisories VALUES ('pkg:gem/spina',?)", [old_url])
+    db.execute("INSERT INTO lookup_failures (collector,kind,identifier,repository_url,reason,checked_at) VALUES ('owners','owner','github.com/SpinaCMS',?,'not_found','2026-10-01')", [old_url])
+    new_url = "https://github.com/spinacms/spina-cms"
+    page = "#{API}?critical=true&per_page=100&page=1"
+    run_script("fetch.rb", ["--refresh", "rubygems.org"], [[page, 200, {}, JSON.generate([package(repository_url: new_url)])]])
+    assert_equal [new_url], db.execute("SELECT repository_url FROM repos").map { |r| r["repository_url"] }
+    assert_equal new_url, db.get_first_value("SELECT repository_url FROM advisories")
+    assert_equal new_url, db.get_first_value("SELECT repository_url FROM lookup_failures")
+  end
 end

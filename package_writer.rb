@@ -15,6 +15,7 @@ module Bernies
     ].freeze
 
     def initialize(db)
+      @db = db
       @packages = db.prepare <<~SQL
         INSERT INTO packages (#{PACKAGE_COLUMNS.join(",")}) VALUES (#{(["?"] * PACKAGE_COLUMNS.size).join(",")})
         ON CONFLICT(purl) DO UPDATE SET
@@ -72,6 +73,40 @@ module Bernies
     def close
       @packages.close
       @repos.close
+    end
+
+    def prune_repositories
+      unused = "NOT EXISTS (SELECT 1 FROM packages p WHERE p.repository_url=repos.repository_url)"
+      if @db.get_first_value("SELECT 1 FROM sqlite_master WHERE type='table' AND name='science_projects'")
+        unused += " AND NOT EXISTS (SELECT 1 FROM science_projects s WHERE s.repository_url=repos.repository_url)"
+      end
+
+      @db.transaction do
+        if @db.get_first_value("SELECT 1 FROM sqlite_master WHERE type='table' AND name='advisories'")
+          @db.execute <<~SQL
+            UPDATE advisories SET repository_url=(SELECT p.repository_url FROM packages p WHERE p.purl=advisories.purl)
+            WHERE EXISTS (SELECT 1 FROM packages p WHERE p.purl=advisories.purl AND p.repository_url IS NOT advisories.repository_url)
+          SQL
+        end
+        @db.execute("DELETE FROM repos WHERE #{unused}")
+        if @db.get_first_value("SELECT 1 FROM sqlite_master WHERE type='table' AND name='lookup_failures'")
+          @db.execute <<~SQL
+            DELETE FROM lookup_failures
+            WHERE repository_url IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM repos r WHERE r.repository_url=lookup_failures.repository_url)
+              AND (kind='repository' OR (kind='owner' AND NOT EXISTS (
+                SELECT 1 FROM repos r WHERE LOWER(r.host || '/' || r.owner)=LOWER(lookup_failures.identifier)
+              )))
+          SQL
+          @db.execute <<~SQL
+            UPDATE lookup_failures SET repository_url=(
+              SELECT MIN(r.repository_url) FROM repos r WHERE LOWER(r.host || '/' || r.owner)=LOWER(lookup_failures.identifier)
+            )
+            WHERE kind='owner' AND repository_url IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM repos r WHERE r.repository_url=lookup_failures.repository_url)
+          SQL
+        end
+      end
     end
   end
 end

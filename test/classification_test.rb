@@ -15,7 +15,7 @@ class ClassificationTest < Minitest::Test
   def setup
     @directory = Dir.mktmpdir("classification-test")
     FileUtils.cp(%w[mydataset.rb package_writer.rb repos.rb commits.rb issues.rb classify.rb
-                    advisories.rb report.rb http.rb database.rb lookup_failures.rb].map { |name|
+                    advisories.rb report.rb tag.rb http.rb database.rb lookup_failures.rb].map { |name|
       File.expand_path("../#{name}", __dir__)
     }, @directory)
     FileUtils.cp(File.expand_path("http_adapter.rb", __dir__), @directory)
@@ -162,6 +162,39 @@ class ClassificationTest < Minitest::Test
       assert_equal @today, row["repos_synced_at"]
       assert_equal @old, row["issues_synced_at"]
       refute_nil row["classified_at"]
+    end
+  end
+
+  def test_packages_without_repositories_remain_visible_in_review_exports
+    @package["repository_url"] = nil
+    import
+    classify
+    %w[situation eol_direct dead_transitive_count remediation alternative_purl remediation_notes
+       remediation_source llm_confidence top1_dependent].each { |column| @db.execute("ALTER TABLE packages ADD COLUMN #{column}") }
+    %w[code_loc complexity has_native].each { |column| @db.execute("ALTER TABLE repos ADD COLUMN #{column}") }
+    run_script("tag.rb")
+    tag = CSV.read(File.join(@directory, "custom.db.output/out/tag.csv"), headers: true).first
+    assert_equal "repository:missing", tag["signals"]
+    assert_equal 0, tag["unpatched_advisories"].to_i
+    url = "https://advisories.ecosyste.ms/api/v1/advisories?ecosystem=rubygems&package_name=example&per_page=100"
+    data = [{ "identifiers" => ["no-repository-advisory"], "packages" => [{ "ecosystem" => "rubygems", "package_name" => "example", "versions" => [] }] }]
+    run_script("advisories.rb", [], [["get", url, 200, {}, JSON.generate(data)]])
+    run_script("report.rb")
+    run_script("tag.rb")
+    root = File.join(@directory, "custom.db.output")
+    outputs = [
+      CSV.read(File.join(root, "out/remediation.csv"), headers: true),
+      JSON.parse(File.read(File.join(root, "out/remediation.json"))),
+      CSV.read(File.join(root, "findings/ruby.csv"), headers: true),
+      CSV.read(File.join(root, "out/tag.csv"), headers: true)
+    ]
+    outputs.each do |rows|
+      assert_equal 1, rows.size
+      row = rows.first
+      assert_equal "unknown", row["bucket"]
+      assert_equal "repository:missing", row["signals"]
+      assert_nil row["repository_url"]
+      assert_equal 1, row["unpatched_advisories"].to_i
     end
   end
 end
