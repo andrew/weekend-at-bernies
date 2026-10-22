@@ -5,9 +5,10 @@
 # for deprecation pointers, then delete the clone. Results cached under
 # cache/size and the brief JSON under cache/brief.
 #
-# Usage: ruby size.rb [--refresh] [--all] [--keep] [--ecosystem NAME] [--bucket NAME] [LIMIT]
+# Usage: ruby size.rb [--refresh] [--all] [--keep] [--ecosystem NAME] [--bucket NAME] [--failures FILE] [LIMIT]
 
 require_relative "database"
+require_relative "lookup_failures"
 
 require "json"
 require "sqlite3"
@@ -29,6 +30,7 @@ OptionParser.new do |parser|
   parser.on("--keep") { options[:keep] = true }
   parser.on("--ecosystem NAME") { |name| options[:ecosystem] = name }
   parser.on("--bucket NAME") { |name| options[:bucket] = name }
+  parser.on("--failures FILE") { |path| options[:failures] = path }
 end.parse!
 REFRESH = !!options[:refresh]
 ALL = !!options[:all]
@@ -39,6 +41,7 @@ LIMIT = ARGV[0]&.to_i
 
 CLONE_HOSTS = %w[github.com gitlab.com codeberg.org gitea.com sr.ht git.sr.ht]
 NATIVE_LANGS = %w[C C++ Objective-C Objective-C++ Assembly Zig]
+SizeFailure = Struct.new(:url, :status, :host_status, :resolved_url, :reason, keyword_init: true)
 DEPRECATION_RE = /deprecat|unmaintained|no longer maintained|use .{1,40} instead|superseded by|abandoned/i
 
 SOURCE_DIRS = {
@@ -119,18 +122,16 @@ rescue
   nil
 end
 
-def measure(url, ecosystems)
+def measure(url, ecosystems, refresh: REFRESH)
   cache = File.join(CACHE, "#{hkey(url)}.json")
-  if !REFRESH && File.exist?(cache)
+  if !refresh && File.exist?(cache)
     body = File.read(cache)
     return JSON.parse(body) unless body == "null"
   end
 
   result = nil
   Dir.mktmpdir("bernies-size-") do |dir|
-    unless clone(url, dir)
-      return nil
-    end
+    return SizeFailure.new(url: url, reason: "clone_failed") unless clone(url, dir)
 
     brief_out = run("brief", "--json", dir) || run("brief", dir)
     brief_json = brief_out ? (JSON.parse(brief_out) rescue nil) : nil
@@ -138,9 +139,9 @@ def measure(url, ecosystems)
 
     src = source_dir(dir, ecosystems)
     scc_out = run("scc", "--no-cocomo", "--format", "json", src)
-    return nil unless scc_out
-    scc = JSON.parse(scc_out)
-    return nil unless scc.is_a?(Array)
+    return SizeFailure.new(url: url, reason: "scc_failed") unless scc_out
+    scc = JSON.parse(scc_out) rescue nil
+    return SizeFailure.new(url: url, reason: "scc_invalid") unless scc.is_a?(Array)
 
     code_loc   = scc.sum { |l| l["Code"] || 0 }
     comment    = scc.sum { |l| l["Comment"] || 0 }
@@ -169,12 +170,13 @@ def measure(url, ecosystems)
   result
 rescue => e
   warn "  #{url}: #{e.class}: #{e.message}"
-  nil
+  SizeFailure.new(url: url, reason: "size_error")
 end
 
 db = SQLite3::Database.new(DB_PATH)
 db.busy_timeout = 5000
 db.results_as_hash = true
+failures = Bernies::LookupFailures.new(db, "size")
 {
   code_loc: "INTEGER", comment_loc: "INTEGER", code_files: "INTEGER",
   complexity: "INTEGER", entry_points: "INTEGER", languages: "TEXT",
@@ -192,7 +194,8 @@ rows = db.execute(<<~SQL)
   SELECT r.repository_url,
          GROUP_CONCAT(DISTINCT p.ecosystem) AS ecosystems
   FROM repos r JOIN packages p ON p.repository_url = r.repository_url
-  WHERE #{REFRESH ? "1=1" : "r.size_synced_at IS NULL"}
+  WHERE #{REFRESH ? "1=1" : "(r.size_synced_at IS NULL OR EXISTS (SELECT 1 FROM lookup_failures f " \
+    "WHERE f.collector='size' AND f.kind='repository' AND f.identifier=r.repository_url))"}
     AND r.host IN (#{CLONE_HOSTS.map { |h| "'#{h}'" }.join(",")})
     #{bucket_filter}
     #{eco_filter}
@@ -214,16 +217,18 @@ hit = miss = 0
 rows.each_with_index do |r, i|
   url = r["repository_url"]
   ecos = (r["ecosystems"] || "").split(",")
-  m = measure(url, ecos)
-  if m
+  m = measure(url, ecos, refresh: REFRESH || failures.recorded?("repository", url))
+  if m.is_a?(Hash)
     upd.execute(
       m["code_loc"], m["comment_loc"], m["code_files"], m["complexity"],
       m["entry_points"], JSON.generate(m["languages"]), m["has_native"],
       m["deprecation_text"], now, url
     )
+    failures.clear("repository", url)
     hit += 1
   else
-    puts ; puts "miss: #{url}"
+    failures.record("repository", url, m, repository_url: url)
+    puts ; puts "miss: #{url}: #{m.reason}"
     miss += 1
   end
   print "\r[#{i + 1}/#{rows.size}] hit=#{hit} miss=#{miss}"
@@ -231,3 +236,4 @@ end
 upd.close
 puts
 puts "sized #{hit}, failed #{miss}"
+Bernies::LookupFailures.export(db, options[:failures], collector: "size") if options[:failures]

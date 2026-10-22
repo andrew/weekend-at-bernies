@@ -242,6 +242,24 @@ class CollectorRefreshTest < Minitest::Test
     end
   end
 
+  def test_size_failure_reasons_are_exported_and_retried_until_measurement_succeeds
+    csv_path = File.join(@directory, "out", "size-failures.csv")
+    run_script("size", [], [], commands: { "code_loc" => 10 })
+    output = run_script("size", ["--refresh", "--failures", csv_path, "1"], [], commands: { "clone_failed" => true })
+    assert_includes output, "miss: #{@urls[0]}: clone_failed\n"
+    rows = CSV.read(csv_path, headers: true)
+    assert_equal [["size", @urls[0], "clone_failed", "pkg:gem/alpha"]], rows.map { |row| row.values_at("collector", "identifier", "reason", "packages") }
+    assert_equal 10, repo["code_loc"]
+
+    assert_includes run_script("size", ["--failures", csv_path], [], commands: { "scc_failed" => true }), "miss: #{@urls[0]}: scc_failed\n"
+    assert_equal ["scc_failed"], CSV.read(csv_path, headers: true).map { |row| row["reason"] }
+
+    run_script("size", ["--failures", csv_path], [], commands: { "code_loc" => 500 })
+    assert_equal 500, repo["code_loc"]
+    assert_empty CSV.read(csv_path, headers: true)
+    assert_includes run_script("size"), "0 repos to size"
+  end
+
   def test_refresh_preserves_active_scope_unless_all_is_requested
     @db.execute("UPDATE repos SET bucket='active'")
     %w[clone size deps dependents].each do |script|

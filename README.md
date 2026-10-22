@@ -40,9 +40,9 @@ Package imports preserve repository fields once `repos.rb` has saved a source sy
 
 After package imports, repositories with no remaining package or science-project references are removed, along with obsolete lookup failures. Advisory repository links follow the package's current repository URL. Shared repositories and repositories selected as science projects are retained.
 
-`mydataset.rb`, `repos.rb`, `owners.rb` and `clone.rb` save unresolved lookups in the selected database, with the package, repository or owner identity, endpoint, HTTP status and failure reason. Repository failures also include the GitHub status when checked. A later successful lookup clears its entry. Failed responses are not cached, and reruns retry recorded failures even when older metadata is present; legacy `null` cache entries are fetched again to establish their status.
+`mydataset.rb`, `repos.rb`, `owners.rb`, `clone.rb` and `size.rb` save unresolved lookups in the selected database, with the package, repository or owner identity, endpoint, HTTP status and failure reason. Repository failures also include the GitHub status when checked. A later successful lookup clears its entry. Failed responses are not cached, and reruns retry recorded failures even when older metadata is present; legacy `null` cache entries are fetched again to establish their status.
 
-Pass `--failures FILE` to any of those four commands to export its unresolved lookups as CSV, for example `ruby repos.rb --failures out/repo-failures.csv`. The file is replaced on each export. `report.rb` writes all recorded failures to `out/lookup-failures.csv`, including package names associated with a failed repository. `repository_service_miss` means GitHub returned a repository page while the repository service returned 404; `repository_not_found` means both returned 404. A 404 can also mean a private or otherwise unavailable resource. Rate limits, server errors and timeouts have separate reasons, and unknown HTTP statuses remain blank.
+Pass `--failures FILE` to any of those five commands to export its unresolved lookups as CSV, for example `ruby repos.rb --failures out/repo-failures.csv`. The file is replaced on each export. `report.rb` writes all recorded failures to `out/lookup-failures.csv`, including package names associated with a failed repository. `repository_service_miss` means GitHub returned a repository page while the repository service returned 404; `repository_not_found` means both returned 404. A 404 can also mean a private or otherwise unavailable resource. Rate limits, server errors and timeouts have separate reasons, and unknown HTTP statuses remain blank. `size.rb` records `clone_failed`, `scc_failed` (non-zero exit), `scc_invalid` (unparseable output) or `size_error`, which also prints the exception to stderr.
 
 The signals stack as proofs of life: a recent release, a recent default-branch commit, an active issue maintainer or a merged PR is enough to mark a repo alive and skip the expensive checks. Run `classify.rb` between steps; `clone.rb` and `deps.rb` skip repos already bucketed `active` (pass `--all` to override). `clone.rb` does a `--depth 1 --bare --filter=blob:none` clone per repo to read the real default-branch HEAD date, since `pushed_at` from the API covers any branch and lags. `deps.rb` measures drift: for each package's latest release it fetches the declared direct dependencies, looks up each dep's current latest, and records `majors_behind`.
 
@@ -140,7 +140,7 @@ Everything lands in `bernies.db` (sqlite, WAL mode):
   * `packages`: one row per critical package (purl). Registry, dependent counts, downloads, latest release, registry maintainers, dep-drift rollups, `top1_share`/`top5_share`/`transit_ratio`, `situation`/`remediation`/`alternative_purl`/`remediation_source`.
   * `repos`: one row per repository_url. Repo metadata, commit/issue stats, clone result, advisory rollups, bucket, signals, `code_loc`/`complexity`/`entry_points`/`has_native` from `size.rb`.
   * `advisories`: one row per (purl, advisory). Severity, CVSS, vulnerable range, first_patched_version, patched flag.
-  * `lookup_failures`: unresolved package, repository, owner and clone lookups, with endpoint, status, reason and last attempt time.
+  * `lookup_failures`: unresolved package, repository, owner, clone and size lookups, with endpoint, status, reason and last attempt time.
   * `dependencies`: one row per (purl, dep). Requirement, dep's current latest, majors_behind, runtime/dev kind.
   * `dependents`: one row per (purl, rank). Top-N dependent packages by downloads, with description.
 
@@ -166,7 +166,7 @@ Some queries:
   * `out/remediation.csv`, `out/remediation.json`: every non-active package with `situation`, `remediation`, `alternative_purl`, `remediation_source`, `llm_confidence`, top dependent, code size and complexity.
   * `findings/<lang>.csv`: same columns as `remediation.csv`, one file per ecosystem alongside the writeup (e.g. `findings/ruby.csv` for rubygems).
   * `out/tag.csv`: review sheet from `tag.rb`; edit and reimport.
-  * `out/lookup-failures.csv`: unresolved lookups across the import, repository, owner and clone collectors.
+  * `out/lookup-failures.csv`: unresolved lookups across the import, repository, owner, clone and size collectors.
   * `out/<ecosystem>-bernies.csv`: per-ecosystem dead+dormant export from `export_ecosystem.rb`.
 
 Advisory collection reads every page before reconciling a package's saved advisories. Successful responses remove obsolete associations and exclude advisories belonging to other packages. Failed or invalid responses preserve saved data. Use `ruby advisories.rb --refresh` to fetch corrected upstream data, then rerun classification and reports.
