@@ -5,3 +5,7 @@ gem "faraday-retry"
 gem "faraday-follow_redirects"
 gem "sqlite3"
 gem "csv"
+group :test do
+  gem "minitest"
+  gem "rake"
+end

@@ -10,7 +10,7 @@ The failure mode we care about: a security report or a breaking dependency updat
 
 Run the tests with:
 
-    ruby -Itest -e 'Dir.glob("test/*_test.rb").sort.each { |file| require_relative file }'
+    bundle exec rake test
 
 ## Pipeline
 
