@@ -53,7 +53,7 @@ begin
     result = cached_response(connection, path, {}, cache, refresh: refresh || failures.recorded?("package", "pkg:gem/#{name}"))
     package = result.data
     unless package.is_a?(Hash) && package["purl"] && package["name"] && package["ecosystem"]
-      warn "#{name}: package not found or unavailable"
+      $stderr.puts "#{name}: package not found or unavailable"
       puts ; puts "miss: #{failures.record('package', "pkg:gem/#{name}", result)}"
       unavailable += 1
       next

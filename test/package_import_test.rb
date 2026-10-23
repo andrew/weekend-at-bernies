@@ -62,11 +62,11 @@ class PackageImportTest < Minitest::Test
     ["#{API}/#{name}", 200, {}, JSON.generate(data)]
   end
 
-  def run_script(script, args, stubs = [], success: true)
+  def run_script(script, args, stubs = [], success: true, ruby_options: [])
     File.write(File.join(@directory, "stubs.json"), JSON.generate(stubs))
     output, status = Open3.capture2e(
       { "BERNIES_DB" => @db_path, "HTTP_STUBS" => File.join(@directory, "stubs.json") },
-      RbConfig.ruby, "-r", "bundler/setup", "-r", File.join(@directory, "adapter.rb"),
+      RbConfig.ruby, *ruby_options, "-r", "bundler/setup", "-r", File.join(@directory, "adapter.rb"),
       File.join(@directory, script), *args
     )
     assert_equal success, status.success?, output
@@ -127,7 +127,7 @@ class PackageImportTest < Minitest::Test
     File.write(@input, "pkg:gem, missing\npkg:gem, spina\n")
     output = run_script("mydataset.rb", [@input], [
       ["#{API}/missing", 404, {}, '{"error":"Package not found"}'], response("spina")
-    ], success: false)
+    ], success: false, ruby_options: ["-W0"])
     assert_includes output, "missing: package not found or unavailable"
     assert_includes output, "imported 1, unavailable 1"
     assert_equal ["spina"], db.execute("SELECT name FROM packages").map { |row| row["name"] }

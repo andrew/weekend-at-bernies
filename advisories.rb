@@ -100,7 +100,7 @@ unpatched = 0
 pkgs.each_with_index do |p, i|
   advs = fetch(p["ecosystem"], p["name"])
   unless advs
-    warn "#{p['purl']}: advisory fetch incomplete; preserving saved advisories"
+    $stderr.puts "#{p['purl']}: advisory fetch incomplete; preserving saved advisories"
     next
   end
 

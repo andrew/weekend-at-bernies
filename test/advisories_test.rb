@@ -61,12 +61,12 @@ class AdvisoriesTest < Minitest::Test
     }
   end
 
-  def run_script(name, *args, stubs: [], db_path: @db_path)
+  def run_script(name, *args, stubs: [], db_path: @db_path, ruby_options: [])
     stub_path = File.join(@directory, "stubs.json")
     File.write(stub_path, JSON.generate(stubs))
     output, status = Open3.capture2e(
       { "BERNIES_DB" => db_path, "HTTP_STUBS" => stub_path },
-      RbConfig.ruby, "-r", "bundler/setup", "-r", File.join(@directory, "http_adapter.rb"),
+      RbConfig.ruby, *ruby_options, "-r", "bundler/setup", "-r", File.join(@directory, "http_adapter.rb"),
       File.join(@directory, name), *args
     )
     assert status.success?, output
@@ -217,7 +217,7 @@ class AdvisoriesTest < Minitest::Test
     before = @db.execute("SELECT * FROM advisories")
     url = "https://advisories.ecosyste.ms/api/v1/advisories?ecosystem=rubygems&package_name=devise-two-factor&per_page=100"
     [[404, "null"], [200, '{"error":"unavailable"}'], [200, '[{"identifiers":["incomplete"]}]']].each do |status, body|
-      output = run_script("advisories.rb", "--refresh", stubs: [["get", url, status, {}, body]])
+      output = run_script("advisories.rb", "--refresh", stubs: [["get", url, status, {}, body]], ruby_options: ["-W0"])
       assert_includes output, "preserving saved advisories"
       assert_equal before, @db.execute("SELECT * FROM advisories")
     end
@@ -251,5 +251,27 @@ class AdvisoriesTest < Minitest::Test
     url = "https://advisories.ecosyste.ms/api/v1/advisories?ecosystem=rubygems&package_name=devise-two-factor&per_page=100"
     run_script("advisories.rb", "--refresh", "1", stubs: [["get", url, 200, {}, "[]"]])
     assert_equal ["unselected"], @db.execute("SELECT identifier FROM advisories").map { |r| r["identifier"] }
+  end
+
+  def test_unpatched_export_preserves_known_buckets_and_labels_missing_evidence_unknown
+    data = advisory
+    data["packages"].first["versions"] = []
+    import(data)
+    [nil, "", "active", "dormant", "dead", "unknown"].each do |bucket|
+      @db.execute("UPDATE repos SET bucket=?", [bucket])
+      run_script("report.rb")
+      row = CSV.read(File.join(@directory, "custom.db.output/out/unpatched.csv"), headers: true).first
+      assert_equal(bucket.to_s.empty? ? "unknown" : bucket, row["bucket"])
+    end
+
+    @db.execute("DELETE FROM repos")
+    [REPOSITORY, nil].each do |url|
+      @db.execute("UPDATE packages SET repository_url=?", [url])
+      @db.execute("UPDATE advisories SET repository_url=?", [url])
+      run_script("report.rb")
+      row = CSV.read(File.join(@directory, "custom.db.output/out/unpatched.csv"), headers: true).first
+      assert_equal "unknown", row["bucket"]
+      assert_equal IDENTIFIER, row["identifier"]
+    end
   end
 end

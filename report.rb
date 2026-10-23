@@ -122,7 +122,8 @@ CSV.open(File.join(OUTDIR, "bernies.csv"), "w") do |csv|
 end
 
 unpatched = db.execute <<~SQL
-  SELECT a.repository_url, r.bucket, a.ecosystem, a.package_name, a.identifier,
+  SELECT a.repository_url, COALESCE(NULLIF(r.bucket,''), 'unknown') AS bucket,
+         a.ecosystem, a.package_name, a.identifier,
          a.severity, a.cvss_score, a.published_at, a.vulnerable_range,
          p.dependent_repos, p.downloads, r.days_since_release, r.days_since_commit
   FROM advisories a
