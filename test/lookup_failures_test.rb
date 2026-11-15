@@ -152,6 +152,27 @@ class LookupFailuresTest < Minitest::Test
     assert_nil failure
   end
 
+  def test_transferred_repository_is_attributed_to_its_new_owner
+    moved = "https://github.com/example-org/project"
+    moved_lookup = "https://repos.ecosyste.ms/api/v1/repositories/lookup?#{URI.encode_www_form(url: moved)}"
+    new_owner = "https://repos.ecosyste.ms/api/v1/hosts/github.com/owners/example-org"
+    run_script("owners.rb", [], [response(OWNER_BY_LOGIN, 404)])
+    assert_equal "github.com/example", failure["identifier"]
+
+    run_script("repos.rb", [], [
+      response(LOOKUP, 404),
+      ["head", REPOSITORY, 301, { "location" => moved }, ""],
+      response(moved, 200, method: "head"),
+      response(moved_lookup, 200, repo_metadata.merge("full_name" => "Example-Org/project", "html_url" => "https://github.com/Example-Org/project"))
+    ])
+    assert_equal "example-org", @db.get_first_value("SELECT owner FROM repos WHERE repository_url=?", REPOSITORY)
+    assert_nil failure
+
+    run_script("owners.rb", [], [response(new_owner, 200, { "kind" => "organization", "login" => "Example-Org" })])
+    assert_equal "organization", @db.get_first_value("SELECT kind FROM owners WHERE login='example-org'")
+    assert_nil failure
+  end
+
   def test_package_failures_are_distinct_and_clear_after_a_successful_import
     run_script("mydataset.rb", ["--refresh", "--failures", @csv_path, @input], [response(PACKAGE, 404)], success: false)
     assert_equal "package", failure["kind"]

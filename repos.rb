@@ -53,6 +53,13 @@ def lookup(repo_url, refresh: REFRESH)
   result
 end
 
+# A transferred repo keeps its old URL as the row key but belongs to its new owner.
+def current_owner(url, result)
+  current = result.data["html_url"] || result.resolved_url
+  host, owner = current.to_s.downcase.delete_prefix("https://").split("/")
+  owner if owner && host == url.delete_prefix("https://").split("/").first
+end
+
 db = SQLite3::Database.new(DB_PATH)
 db.busy_timeout = 5000
 db.results_as_hash = true
@@ -77,7 +84,7 @@ upd = db.prepare <<~SQL
     has_issues=COALESCE(?,has_issues), prs_enabled=COALESCE(?,prs_enabled),
     language=COALESCE(?,language), license=COALESCE(?,license),
     default_branch=COALESCE(?,default_branch), repo_created_at=COALESCE(?,repo_created_at),
-    pushed_at=COALESCE(?,pushed_at), repos_synced_at=?
+    pushed_at=COALESCE(?,pushed_at), repos_synced_at=?, owner=COALESCE(?,owner)
   WHERE repository_url=?
 SQL
 
@@ -95,7 +102,7 @@ urls.each_with_index do |url, i|
       b[m["archived"]], b[m["fork"]], m["status"],
       b[m["has_issues"]], b[m["pull_requests_enabled"]],
       m["language"], m["license"], m["default_branch"], m["created_at"],
-      m["pushed_at"], m["last_synced_at"],
+      m["pushed_at"], m["last_synced_at"], current_owner(url, result),
       url
     )
     failures.clear("repository", url)
@@ -104,6 +111,12 @@ urls.each_with_index do |url, i|
   print "\r[#{i + 1}/#{urls.size}] hit=#{hit} miss=#{miss}"
 end
 upd.close
+# Failures recorded against an owner that no repo belongs to any more can never clear.
+db.execute(<<~SQL)
+  DELETE FROM lookup_failures
+  WHERE kind='owner'
+    AND NOT EXISTS (SELECT 1 FROM repos r WHERE LOWER(r.host || '/' || r.owner)=LOWER(lookup_failures.identifier))
+SQL
 puts
 puts "refreshed #{hit}, no data for #{miss}"
 Bernies::LookupFailures.export(db, options[:failures], collector: "repos") if options[:failures]

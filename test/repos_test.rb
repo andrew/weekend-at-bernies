@@ -103,6 +103,26 @@ class ReposTest < Minitest::Test
     ])
   end
 
+  def test_records_the_new_owner_of_a_transferred_repository
+    run_repos([
+      ["get", lookup_url(OLD_URL), 404, {}, "null"],
+      ["head", OLD_URL, 301, { "location" => NEW_URL }, ""],
+      ["head", NEW_URL, 200, {}, ""],
+      ["get", lookup_url(NEW_URL), 200, {}, JSON.generate(metadata)]
+    ])
+    assert_equal "jmespath", @db.get_first_value("SELECT owner FROM repos WHERE repository_url=?", OLD_URL)
+  end
+
+  def test_records_the_owner_the_repository_service_reports
+    run_repos([["get", lookup_url(OLD_URL), 200, {}, JSON.generate(metadata.merge("html_url" => "https://github.com/JMESPath/jmespath.rb"))]])
+    assert_equal "jmespath", @db.get_first_value("SELECT owner FROM repos WHERE repository_url=?", OLD_URL)
+  end
+
+  def test_keeps_the_owner_when_the_reported_url_is_on_another_host
+    run_repos([["get", lookup_url(OLD_URL), 200, {}, JSON.generate(metadata.merge("html_url" => "https://gitlab.com/mirror/jmespath.rb"))]])
+    assert_equal "trevorrowe", @db.get_first_value("SELECT owner FROM repos WHERE repository_url=?", OLD_URL)
+  end
+
   def test_missing_or_unmoved_repositories_remain_misses
     [200, 404].each do |status|
       output = run_repos([
