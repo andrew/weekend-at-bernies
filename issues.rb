@@ -20,8 +20,24 @@ LIMIT   = ARGV[0]&.to_i
 
 FileUtils.mkdir_p(CACHE)
 
+def issues_lookup(repo_url, refresh: REFRESH)
+  result = cached_response(CONN, "/api/v1/repositories/lookup", { url: repo_url }, CACHE, refresh: refresh)
+  # A pending sync is a placeholder, not an answer worth keeping.
+  return result if refresh || result.data&.dig("status") != "pending"
+
+  cached_response(CONN, "/api/v1/repositories/lookup", { url: repo_url }, CACHE, refresh: true)
+end
+
+# issues.ecosyste.ms marks renamed repos not_found under their old name, so
+# follow GitHub's redirect and look up the new name instead.
 def lookup(repo_url)
-  cached_get(CONN, "/api/v1/repositories/lookup", { url: repo_url }, CACHE, refresh: REFRESH)
+  result = issues_lookup(repo_url)
+  return result.data unless result.status == 404 || result.data&.dig("status") == "not_found"
+
+  host = github_repository_response(repo_url, CACHE, refresh: REFRESH)
+  return result.data unless host&.data && host.data != repo_url
+
+  issues_lookup(host.data).data || result.data
 end
 
 db = SQLite3::Database.new(DB_PATH)

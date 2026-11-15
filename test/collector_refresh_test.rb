@@ -66,9 +66,8 @@ class CollectorRefreshTest < Minitest::Test
   end
 
   def owner_responses(index, kind: "user", name: "Old")
-    lookup = "#{REPOS_API}/repositories/lookup?#{URI.encode_www_form(url: @urls[index])}"
-    owner = "#{REPOS_API}/hosts/GitHub/owners/#{@owners[index]}"
-    [response(lookup, { "owner_url" => owner }), response(owner, { "login" => @owners[index], "kind" => kind, "name" => name })]
+    owner = "#{REPOS_API}/hosts/github.com/owners/#{@owners[index]}"
+    [response(owner, { "login" => @owners[index], "kind" => kind, "name" => name })]
   end
 
   def populate_owners(kind = "user")

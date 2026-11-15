@@ -81,7 +81,9 @@ class ActivityRefreshTest < Minitest::Test
     %w[commits issues].each do |service|
       @db.execute("UPDATE repos SET #{service}_synced_at=?, past_year_commits=15, active_maintainers_count=1",
         ["2026-08-01T00:00:00Z"])
-      output = run_script("#{service}.rb", ["--refresh"], [response(service, nil, 404)])
+      stubs = [response(service, nil, 404)]
+      stubs << ["head", REPOSITORY, 200, {}, ""] if service == "issues"
+      output = run_script("#{service}.rb", ["--refresh"], stubs)
       assert_includes output, "enriched 0, no data for 1"
       assert_equal "2026-08-01T00:00:00Z", @db.get_first_value("SELECT #{service}_synced_at FROM repos")
       assert_equal 15, @db.get_first_value("SELECT past_year_commits FROM repos")

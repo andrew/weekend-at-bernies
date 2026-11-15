@@ -13,6 +13,7 @@ class LookupFailuresTest < Minitest::Test
   REPOSITORY = "https://github.com/example/project"
   LOOKUP = "https://repos.ecosyste.ms/api/v1/repositories/lookup?#{URI.encode_www_form(url: REPOSITORY)}"
   OWNER = "https://repos.ecosyste.ms/api/v1/hosts/GitHub/owners/example"
+  OWNER_BY_LOGIN = "https://repos.ecosyste.ms/api/v1/hosts/github.com/owners/example"
   PACKAGE = "https://packages.ecosyste.ms/api/v1/registries/rubygems.org/packages/example"
 
   def setup
@@ -130,28 +131,25 @@ class LookupFailuresTest < Minitest::Test
   end
 
   def test_owner_failure_identifies_the_owner_and_recovers_on_rerun
-    output = run_script("owners.rb", ["--failures", @csv_path], [
-      response(LOOKUP, 200, repo_metadata), response(OWNER, 404)
-    ])
+    output = run_script("owners.rb", ["--failures", @csv_path], [response(OWNER_BY_LOGIN, 404)])
     assert_includes output, "owner github.com/example"
-    assert_includes output, OWNER
+    assert_includes output, OWNER_BY_LOGIN
     assert_equal "owner", failure["kind"]
-    assert_equal OWNER, failure["endpoint"]
+    assert_equal OWNER_BY_LOGIN, failure["endpoint"]
+    assert_equal 404, failure["http_status"]
     assert_equal "github.com/example", CSV.read(@csv_path, headers: true).first["identifier"]
     assert_nil @db.get_first_value("SELECT owners_synced_at FROM owners")
     run_script("owners.rb", ["--failures", @csv_path], [
-      response(LOOKUP, 200, repo_metadata), response(OWNER, 200, { "kind" => "user", "login" => "example" })
+      response(OWNER_BY_LOGIN, 200, { "kind" => "user", "login" => "example" })
     ])
     assert_equal "user", @db.get_first_value("SELECT kind FROM owners")
     assert_empty CSV.read(@csv_path, headers: true)
   end
 
-  def test_owner_repository_prerequisite_failure_keeps_its_endpoint
-    run_script("owners.rb", [], [response(LOOKUP, 404)])
-    assert_equal "owner", failure["kind"]
-    assert_equal "github.com/example", failure["identifier"]
-    assert_equal LOOKUP, failure["endpoint"]
-    assert_equal 404, failure["http_status"]
+  def test_owner_is_found_by_login_when_its_repository_is_gone
+    run_script("owners.rb", [], [response(OWNER_BY_LOGIN, 200, { "kind" => "user", "login" => "example" })])
+    assert_equal "user", @db.get_first_value("SELECT kind FROM owners WHERE login='example'")
+    assert_nil failure
   end
 
   def test_package_failures_are_distinct_and_clear_after_a_successful_import

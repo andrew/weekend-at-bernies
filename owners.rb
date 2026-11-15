@@ -20,7 +20,6 @@ require_relative "lookup_failures"
 WORKDIR        = __dir__
 DB_PATH        = Bernies.database_path
 PACKAGES_CACHE = File.join(WORKDIR, "cache", "packages")
-REPOS_CACHE    = File.join(WORKDIR, "cache", "repos")
 OWNERS_CACHE   = File.join(WORKDIR, "cache", "owners")
 CONN           = conn("https://repos.ecosyste.ms")
 options = {}
@@ -32,7 +31,6 @@ REFRESH = !!options[:refresh]
 LIMIT = ARGV[0]&.to_i
 
 FileUtils.mkdir_p(OWNERS_CACHE)
-FileUtils.mkdir_p(REPOS_CACHE)
 
 db = SQLite3::Database.new(DB_PATH)
 db.busy_timeout = 5000
@@ -158,32 +156,24 @@ todo = todo.first(LIMIT) if LIMIT
 
 puts "API fallback: #{todo.size} owners not in cache (#{synced.size} already filled)"
 
-api_hit = api_miss = norepo = 0
+api_hit = api_miss = 0
 todo.each_with_index do |r, i|
   host, login = r["host"], r["owner"]
   retrying = REFRESH || failures.recorded?("owner", "#{host}/#{login}")
-  result = cached_response(CONN, "/api/v1/repositories/lookup", { url: r["repository_url"] }, REPOS_CACHE, refresh: retrying)
-  repo = result.data
-  if !repo.is_a?(Hash) || repo["owner_url"].to_s.empty?
-    norepo += 1
-    result.reason ||= "missing_owner_url"
-    puts ; puts "norepo/miss: #{failures.record('owner', "#{host}/#{login}", result, repository_url: r['repository_url'])}"
+  # Look the owner up by login so a renamed or deleted repo doesn't mark it missing.
+  path = "/api/v1/hosts/#{URI.encode_www_form_component(host)}/owners/#{URI.encode_www_form_component(login)}"
+  result = cached_response(CONN, path, {}, OWNERS_CACHE, refresh: retrying)
+  rec = result.data
+  if !rec.is_a?(Hash) || rec["kind"].to_s.empty?
+    api_miss += 1
+    puts ; puts "miss: #{failures.record('owner', "#{host}/#{login}", result, repository_url: r['repository_url'])}"
     mark_missing.execute(host, login)
   else
-    path = URI.parse(repo["owner_url"]).path
-    result = cached_response(CONN, path, {}, OWNERS_CACHE, refresh: retrying)
-    rec = result.data
-    if !rec.is_a?(Hash) || rec["kind"].to_s.empty?
-      api_miss += 1
-      puts ; puts "miss: #{failures.record('owner', "#{host}/#{login}", result, repository_url: r['repository_url'])}"
-      mark_missing.execute(host, login)
-    else
-      write_owner(upsert, host, login, rec)
-      failures.clear("owner", "#{host}/#{login}")
-      api_hit += 1
-    end
+    write_owner(upsert, host, login, rec)
+    failures.clear("owner", "#{host}/#{login}")
+    api_hit += 1
   end
-  print "\r[#{i + 1}/#{todo.size}] hit=#{api_hit} miss=#{api_miss} norepo=#{norepo}"
+  print "\r[#{i + 1}/#{todo.size}] hit=#{api_hit} miss=#{api_miss}"
 end
 upsert.close
 mark_missing.close
