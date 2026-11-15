@@ -156,8 +156,9 @@ class LookupFailuresTest < Minitest::Test
     moved = "https://github.com/example-org/project"
     moved_lookup = "https://repos.ecosyste.ms/api/v1/repositories/lookup?#{URI.encode_www_form(url: moved)}"
     new_owner = "https://repos.ecosyste.ms/api/v1/hosts/github.com/owners/example-org"
-    run_script("owners.rb", [], [response(OWNER_BY_LOGIN, 404)])
-    assert_equal "github.com/example", failure["identifier"]
+    run_script("owners.rb", [], [response(OWNER_BY_LOGIN, 200, { "kind" => "user", "login" => "example" })])
+    assert_equal "user", @db.get_first_value("SELECT kind FROM owners WHERE login='example'")
+    @db.execute("INSERT INTO lookup_failures (collector, kind, identifier, reason, checked_at) VALUES ('owners', 'owner', 'github.com/example', 'not_found', '2026-11-01T00:00:00Z')")
 
     run_script("repos.rb", [], [
       response(LOOKUP, 404),
@@ -169,7 +170,7 @@ class LookupFailuresTest < Minitest::Test
     assert_nil failure
 
     run_script("owners.rb", [], [response(new_owner, 200, { "kind" => "organization", "login" => "Example-Org" })])
-    assert_equal "organization", @db.get_first_value("SELECT kind FROM owners WHERE login='example-org'")
+    assert_equal [["example-org", "organization"]], @db.execute("SELECT login, kind FROM owners").map(&:values)
     assert_nil failure
   end
 

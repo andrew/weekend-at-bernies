@@ -62,6 +62,9 @@ db.execute_batch <<~SQL
   CREATE INDEX IF NOT EXISTS idx_owners_kind ON owners(kind);
 SQL
 
+# A transferred repo leaves its previous owner with nothing pointing at it.
+db.execute("DELETE FROM owners WHERE NOT EXISTS (SELECT 1 FROM repos r WHERE r.host=owners.host AND r.owner=owners.login)")
+
 upsert = db.prepare <<~SQL
   INSERT INTO owners (
     host, login, kind, name, description, email, website, twitter, company, location,
