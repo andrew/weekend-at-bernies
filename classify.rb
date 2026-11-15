@@ -130,6 +130,7 @@ db.execute("SELECT * FROM repos") do |r|
     elsif recent_commit || (ds_code && ds_code <= STALE_RELEASE_DAYS)
       "active"
     else
+      puts "unknown:", url
       "unknown"
     end
 
